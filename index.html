@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TheBestIA</title>
+<meta name="description" content="Cuéntame tu problema y TheBestIA te dice qué herramientas usar: texto, código, imagen, vídeo, voz, datos y mucho más.">
+<meta property="og:title" content="TheBestIA">
+<meta property="og:description" content="Describe tu problema y descubre la mejor IA para cada tarea.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b4bd6'/%3E%3Ccircle cx='28' cy='28' r='13' fill='none' stroke='white' stroke-width='6'/%3E%3Cpath d='M38 38l14 14' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: una columna estrecha. Arriba el cuadro de texto, debajo un resultado por necesidad detectada. */
+:root{
+  --bg:#f5f4fb;
+  --surface:#ffffff;
+  --ink:#1b1730;
+  --muted:#655f7d;
+  --line:#ded8ef;
+  --accent:#5b4bd6;
+  --accent-ink:#ffffff;
+  --best:#b45309;
+  --best-bg:#fdf1de;
+  --free:#4f46e5;
+  --free-bg:#e9e7ff;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121024;--surface:#1c1933;--ink:#f0edff;--muted:#a9a3c4;--line:#332e55;
+    --accent:#a78bfa;--accent-ink:#160f2e;--best:#fbbf24;--best-bg:#3a2a0d;--free:#a5b4fc;--free-bg:#221e4a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121024;--surface:#1c1933;--ink:#f0edff;--muted:#a9a3c4;--line:#332e55;
+  --accent:#a78bfa;--accent-ink:#160f2e;--best:#fbbf24;--best-bg:#3a2a0d;--free:#a5b4fc;--free-bg:#221e4a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding:40px 20px 64px;display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(2rem,6vw,3rem);line-height:1.05;margin:0;letter-spacing:-0.02em;text-wrap:balance}
+h1::after{content:'';display:block;width:58px;height:4px;border-radius:99px;background:var(--accent);margin-top:12px}
+.lead{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.langbar{display:flex;gap:6px;margin-top:14px}
+.lang{font:inherit;font-size:.85rem;font-weight:600;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 14px;cursor:pointer}
+.lang[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 28px rgba(91,75,214,.07)}
+label.big{font-weight:600}
+textarea{width:100%;min-height:104px;resize:vertical;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+textarea:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.check{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:.95rem}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+button.go{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:11px 22px;cursor:pointer;box-shadow:0 4px 12px rgba(91,75,214,.22)}
+button.go:hover{filter:brightness(1.08)}
+.examples{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.examples span{color:var(--muted);font-size:.9rem}
+.ex{font:inherit;font-size:.9rem;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
+.ex:hover{border-color:var(--accent);color:var(--accent)}
+.detected{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.detected strong{font-family:var(--font-display);font-size:1.1rem}
+.chip{background:var(--free-bg);color:var(--free);border-radius:999px;padding:3px 12px;font-size:.88rem;font-weight:600}
+.note{color:var(--muted);font-size:.95rem;margin:0}
+.results{display:flex;flex-direction:column;gap:20px}
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 6px 22px rgba(91,75,214,.06)}
+.cat header{padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.cat h2{font-family:var(--font-display);font-size:1.35rem;margin:0;letter-spacing:-0.01em}
+.cat header p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+.tool{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:14px 18px;border-top:1px solid var(--line)}
+.tool:first-of-type{border-top:0}
+.rank{font-family:var(--font-display);font-weight:800;font-size:1.4rem;color:var(--muted);line-height:1.2;font-variant-numeric:tabular-nums}
+.tool.first .rank{color:var(--best)}
+.tname{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tname a{font-weight:600;font-size:1.05rem;color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.tname a:hover{color:var(--accent);text-decoration-color:var(--accent)}
+.badge{font-size:.78rem;font-weight:600;border-radius:6px;padding:2px 8px}
+.b-best{background:var(--best-bg);color:var(--best)}
+.b-free{background:var(--free-bg);color:var(--free)}
+.b-paid{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.tool p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:18px}
+[hidden]{display:none!important}
+.suggest{align-items:flex-start}
+.suggest-btn{font-weight:600;border-color:var(--accent);color:var(--accent);padding:8px 16px}
+#suggestBox{width:100%;display:flex;flex-direction:column;gap:12px}
+#suggestBox textarea{min-height:88px}
+.note.ok{color:var(--accent)}
+footer{color:var(--muted);font-size:.85rem}
+@media (max-width:480px){.wrap{padding:24px 16px 48px}.tool{grid-template-columns:26px 1fr;padding:12px 14px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div>
+    <h1>TheBestIA</h1>
+    <p class="lead" id="lead">Cuéntame qué quieres resolver con tus propias palabras. Te digo qué tipo de IA necesitas y cuáles son las mejores opciones para ese trabajo.</p>
+    <div class="langbar" role="group" aria-label="Idioma / Language">
+      <button type="button" class="lang" data-lang="es" aria-pressed="true">ES</button>
+      <button type="button" class="lang" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+
+  <form class="panel" id="form">
+    <label class="big" for="problema" id="labelProblema">¿Cuál es tu problema?</label>
+    <textarea id="problema" placeholder="Ejemplo: quiero hacer un vídeo corto para Instagram con una voz en off"></textarea>
+    <div class="row">
+      <label class="check" for="gratis"><input type="checkbox" id="gratis"> <span id="labelGratis">Solo opciones con plan gratuito</span></label>
+      <button class="go" type="submit" id="goBtn">Recomendar IAs</button>
+    </div>
+    <div class="examples" id="examples"><span id="examplesLabel">Prueba con:</span></div>
+  </form>
+
+  <section id="out" aria-live="polite"></section>
+
+  <section class="panel suggest" aria-label="Suggest a tool or problem">
+    <button class="ex suggest-btn" type="button" id="suggestBtn">💡 Proponer una IA o un problema</button>
+    <div id="suggestBox" hidden>
+      <label class="big" for="sugText" id="sugLabel">¿Qué falta en TheBestIA?</label>
+      <textarea id="sugText" placeholder="Ejemplo: añade la IA X para editar PDFs, o añade el problema 'organizar un congreso'"></textarea>
+      <div class="row">
+        <button class="go" type="button" id="sugMail">Abrir en mi correo</button>
+        <button class="ex" type="button" id="sugCopy">Copiar propuesta</button>
+      </div>
+      <p class="note" id="sugStatus">Se abre tu correo con destino a blaibgf11@gmail.com. También puedes copiar el texto.</p>
+    </div>
+  </section>
+
+  <footer id="footer">Selección revisada en noviembre de 2026. Las IAs cambian rápido: comprueba precios y límites del plan gratuito en la web de cada herramienta.</footer>
+</main>
+
+<script>
+/* ---------- DATOS ---------- */
+const TOOLS = {
+  chatgpt:{n:'ChatGPT',u:'https://chatgpt.com',f:1},
+  claude:{n:'Claude',u:'https://claude.ai',f:1},
+  gemini:{n:'Gemini',u:'https://gemini.google.com',f:1},
+  copilot:{n:'Microsoft Copilot',u:'https://copilot.microsoft.com',f:1},
+  grok:{n:'Grok',u:'https://grok.com',f:1},
+  mistral:{n:'Le Chat (Mistral)',u:'https://chat.mistral.ai',f:1},
+  deepseek:{n:'DeepSeek',u:'https://chat.deepseek.com',f:1},
+  perplexity:{n:'Perplexity',u:'https://www.perplexity.ai',f:1},
+  consensus:{n:'Consensus',u:'https://consensus.app',f:1},
+  elicit:{n:'Elicit',u:'https://elicit.com',f:1},
+  notebooklm:{n:'NotebookLM',u:'https://notebooklm.google.com',f:1},
+  cursor:{n:'Cursor',u:'https://cursor.com',f:1},
+  claudecode:{n:'Claude Code',u:'https://claude.com/product/claude-code',f:0},
+  ghcopilot:{n:'GitHub Copilot',u:'https://github.com/features/copilot',f:1},
+  codex:{n:'OpenAI Codex',u:'https://openai.com/codex',f:0},
+  windsurf:{n:'Windsurf',u:'https://windsurf.com',f:1},
+  replit:{n:'Replit',u:'https://replit.com',f:1},
+  lovable:{n:'Lovable',u:'https://lovable.dev',f:1},
+  v0:{n:'v0 (Vercel)',u:'https://v0.dev',f:1},
+  bolt:{n:'Bolt',u:'https://bolt.new',f:1},
+  midjourney:{n:'Midjourney',u:'https://www.midjourney.com',f:0},
+  ideogram:{n:'Ideogram',u:'https://ideogram.ai',f:1},
+  flux:{n:'Flux (Black Forest Labs)',u:'https://bfl.ai',f:1},
+  leonardo:{n:'Leonardo AI',u:'https://leonardo.ai',f:1},
+  firefly:{n:'Adobe Firefly',u:'https://firefly.adobe.com',f:1},
+  canva:{n:'Canva',u:'https://www.canva.com',f:1},
+  runway:{n:'Runway',u:'https://runwayml.com',f:1},
+  veo:{n:'Google Veo (en Gemini / Flow)',u:'https://gemini.google/overview/video-generation/',f:0},
+  sora:{n:'Sora',u:'https://sora.com',f:0},
+  kling:{n:'Kling AI',u:'https://klingai.com',f:1},
+  hailuo:{n:'Hailuo (MiniMax)',u:'https://hailuoai.video',f:1},
+  luma:{n:'Luma Dream Machine',u:'https://lumalabs.ai',f:1},
+  heygen:{n:'HeyGen',u:'https://www.heygen.com',f:1},
+  synthesia:{n:'Synthesia',u:'https://www.synthesia.io',f:1},
+  capcut:{n:'CapCut',u:'https://www.capcut.com',f:1},
+  descript:{n:'Descript',u:'https://www.descript.com',f:1},
+  elevenlabs:{n:'ElevenLabs',u:'https://elevenlabs.io',f:1},
+  suno:{n:'Suno',u:'https://suno.com',f:1},
+  otter:{n:'Otter.ai',u:'https://otter.ai',f:1},
+  fireflies:{n:'Fireflies.ai',u:'https://fireflies.ai',f:1},
+  gamma:{n:'Gamma',u:'https://gamma.app',f:1},
+  grammarly:{n:'Grammarly',u:'https://www.grammarly.com',f:1},
+  deepl:{n:'DeepL',u:'https://www.deepl.com',f:1},
+  julius:{n:'Julius AI',u:'https://julius.ai',f:1},
+  zapier:{n:'Zapier',u:'https://zapier.com',f:1},
+  make:{n:'Make',u:'https://www.make.com',f:1},
+  n8n:{n:'n8n',u:'https://n8n.io',f:1},
+  wolfram:{n:'Wolfram Alpha',u:'https://www.wolframalpha.com',f:1},
+  surfer:{n:'Surfer SEO',u:'https://surferseo.com',f:0},
+  copyai:{n:'Copy.ai',u:'https://www.copy.ai',f:1},
+  jasper:{n:'Jasper',u:'https://www.jasper.ai',f:0},
+  duolingo:{n:'Duolingo Max',u:'https://www.duolingo.com',f:1},
+  figma:{n:'Figma AI',u:'https://www.figma.com',f:1},
+  framer:{n:'Framer AI',u:'https://www.framer.com',f:1},
+  uizard:{n:'Uizard',u:'https://uizard.io',f:1},
+  podcastle:{n:'Podcastle',u:'https://podcastle.ai',f:1},
+  murf:{n:'Murf AI',u:'https://murf.ai',f:1},
+  playht:{n:'Play.ht',u:'https://play.ht',f:1},
+  powerbi:{n:'Microsoft Power BI',u:'https://powerbi.microsoft.com',f:1},
+  tableau:{n:'Tableau',u:'https://www.tableau.com',f:1},
+  lookerstudio:{n:'Looker Studio',u:'https://lookerstudio.google.com',f:1},
+  notion:{n:'Notion AI',u:'https://www.notion.com/product/ai',f:1},
+  obsidian:{n:'Obsidian',u:'https://obsidian.md',f:1},
+  youcom:{n:'You.com',u:'https://you.com',f:1},
+  phind:{n:'Phind',u:'https://www.phind.com',f:1},
+  aider:{n:'Aider',u:'https://aider.chat',f:1},
+  sourcegraph:{n:'Sourcegraph Cody',u:'https://sourcegraph.com/cody',f:1},
+  amazonq:{n:'Amazon Q Developer',u:'https://aws.amazon.com/q/developer/',f:1},
+  udio:{n:'Udio',u:'https://www.udio.com',f:1},
+  aiva:{n:'AIVA',u:'https://www.aiva.ai',f:1},
+  did:{n:'D-ID',u:'https://www.d-id.com',f:1},
+  hourone:{n:'Hour One',u:'https://www.hourone.ai',f:1},
+  pika:{n:'Pika',u:'https://pika.art',f:1},
+  topaz:{n:'Topaz Video AI',u:'https://www.topazlabs.com/topaz-video-ai',f:0},
+  stable:{n:'Stable Diffusion',u:'https://stability.ai',f:1},
+  kagi:{n:'Kagi',u:'https://kagi.com',f:0},
+  brave:{n:'Brave Search AI',u:'https://search.brave.com',f:1},
+  exa:{n:'Exa',u:'https://exa.ai',f:1},
+  connectedpapers:{n:'Connected Papers',u:'https://www.connectedpapers.com',f:1},
+  scite:{n:'Scite',u:'https://scite.ai',f:1},
+  researchrabbit:{n:'ResearchRabbit',u:'https://www.researchrabbit.ai',f:1},
+  semantic:{n:'Semantic Scholar',u:'https://www.semanticscholar.org',f:1},
+  quillbot:{n:'QuillBot',u:'https://quillbot.com',f:1},
+  hemingway:{n:'Hemingway Editor',u:'https://hemingwayapp.com',f:1},
+  wordtune:{n:'Wordtune',u:'https://www.wordtune.com',f:1},
+  rytr:{n:'Rytr',u:'https://rytr.me',f:1},
+  writer:{n:'Writer',u:'https://writer.com',f:1},
+  tome:{n:'Tome',u:'https://tome.app',f:1},
+  beautifulai:{n:'Beautiful.ai',u:'https://www.beautiful.ai',f:1},
+  rows:{n:'Rows',u:'https://rows.com',f:1},
+  hex:{n:'Hex',u:'https://hex.tech',f:1},
+  deepnote:{n:'Deepnote',u:'https://deepnote.com',f:1},
+  colab:{n:'Google Colab',u:'https://colab.research.google.com',f:1},
+  devin:{n:'Devin',u:'https://devin.ai',f:0},
+  openhands:{n:'OpenHands',u:'https://openhands.dev',f:1},
+  continuedev:{n:'Continue',u:'https://continue.dev',f:1},
+  cline:{n:'Cline',u:'https://cline.bot',f:1},
+  roocode:{n:'Roo Code',u:'https://roocode.com',f:1},
+  tabnine:{n:'Tabnine',u:'https://www.tabnine.com',f:1},
+  codeium:{n:'Codeium',u:'https://codeium.com',f:1},
+  sweep:{n:'Sweep',u:'https://sweep.dev',f:1},
+  postman:{n:'Postman AI',u:'https://www.postman.com/ai/',f:1},
+  recraft:{n:'Recraft',u:'https://www.recraft.ai',f:1},
+  photoai:{n:'PhotoAI',u:'https://photoai.com',f:0},
+  removebg:{n:'Remove.bg',u:'https://www.remove.bg',f:1},
+  cleanup:{n:'Cleanup.pictures',u:'https://cleanup.pictures',f:1},
+  adobeexpress:{n:'Adobe Express',u:'https://www.adobe.com/express/',f:1},
+  higgsfield:{n:'Higgsfield',u:'https://higgsfield.ai',f:1},
+  vidu:{n:'Vidu',u:'https://vidu.com',f:1},
+  krea:{n:'Krea AI',u:'https://www.krea.ai',f:1},
+  lipsync:{n:'LipSync AI',u:'https://www.lipsync.ai',f:1},
+  resemble:{n:'Resemble AI',u:'https://www.resemble.ai',f:1},
+  speechify:{n:'Speechify',u:'https://speechify.com',f:1},
+  boomy:{n:'Boomy',u:'https://boomy.com',f:1},
+  soundraw:{n:'Soundraw',u:'https://soundraw.io',f:1},
+  mubert:{n:'Mubert',u:'https://mubert.com',f:1},
+  granola:{n:'Granola',u:'https://www.granola.ai',f:1},
+  fathom:{n:'Fathom',u:'https://fathom.video',f:1},
+  sembly:{n:'Sembly AI',u:'https://www.sembly.ai',f:1},
+  tldv:{n:'tl;dv',u:'https://tldv.io',f:1},
+  pipedream:{n:'Pipedream',u:'https://pipedream.com',f:1},
+  powerautomate:{n:'Microsoft Power Automate',u:'https://powerautomate.microsoft.com',f:1},
+  activepieces:{n:'Activepieces',u:'https://www.activepieces.com',f:1},
+  clickup:{n:'ClickUp AI',u:'https://clickup.com/ai',f:1},
+  asana:{n:'Asana AI',u:'https://asana.com/ai',f:1},
+  monday:{n:'monday.com AI',u:'https://monday.com',f:1},
+  airtable:{n:'Airtable AI',u:'https://www.airtable.com',f:1},
+  coda:{n:'Coda AI',u:'https://coda.io',f:1},
+  quizlet:{n:'Quizlet',u:'https://quizlet.com',f:1},
+  khanmigo:{n:'Khanmigo',u:'https://www.khanacademy.org/khan-labs',f:0},
+  layla:{n:'Layla',u:'https://www.layla.travel',f:1},
+  roamaround:{n:'Roam Around',u:'https://www.roamaround.io',f:1},
+  chefgpt:{n:'ChefGPT',u:'https://chefgpt.xyz',f:1},
+  fitbod:{n:'Fitbod',u:'https://fitbod.me',f:0},
+  adahealth:{n:'Ada',u:'https://ada.com',f:1},
+  intercom:{n:'Intercom Fin',u:'https://www.intercom.com/fin',f:0},
+  huggingface:{n:'Hugging Face',u:'https://huggingface.co',f:1},
+  ollama:{n:'Ollama',u:'https://ollama.com',f:1},
+  lmstudio:{n:'LM Studio',u:'https://lmstudio.ai',f:1},
+  jan:{n:'Jan',u:'https://jan.ai',f:1},
+  gpt4all:{n:'GPT4All',u:'https://www.gpt4all.io',f:1},
+  flowise:{n:'Flowise',u:'https://flowiseai.com',f:1},
+  langflow:{n:'Langflow',u:'https://www.langflow.org',f:1},
+  dify:{n:'Dify',u:'https://dify.ai',f:1},
+  coze:{n:'Coze',u:'https://www.coze.com',f:1},
+  relevance:{n:'Relevance AI',u:'https://relevanceai.com',f:1},
+  colossyan:{n:'Colossyan',u:'https://www.colossyan.com',f:1},
+  elai:{n:'Elai.io',u:'https://elai.io',f:1},
+  synthesys:{n:'Synthesys',u:'https://synthesys.io',f:1},
+  voicemod:{n:'Voicemod',u:'https://www.voicemod.net',f:1},
+  lovoai:{n:'LOVO AI',u:'https://www.lovo.ai',f:1},
+  wellsaid:{n:'WellSaid Labs',u:'https://wellsaidlabs.com',f:0},
+  filmora:{n:'Filmora AI',u:'https://filmora.wondershare.com',f:1},
+  photoleap:{n:'Photoleap',u:'https://www.photoleapapp.com',f:1},
+  pixelup:{n:'PixelUp',u:'https://pixelup.ai',f:1},
+  dreamina:{n:'Dreamina',u:'https://dreamina.capcut.com',f:1},
+  slidesai:{n:'SlidesAI',u:'https://www.slidesai.io',f:1},
+  chatbase:{n:'Chatbase',u:'https://www.chatbase.co',f:1},
+  docsbot:{n:'DocsBot',u:'https://docsbot.ai',f:1},
+  sitegpt:{n:'SiteGPT',u:'https://sitegpt.ai',f:1},
+  manychat:{n:'ManyChat',u:'https://manychat.com',f:1},
+  landbot:{n:'Landbot',u:'https://www.landbot.io',f:1},
+  chatfuel:{n:'Chatfuel',u:'https://chatfuel.com',f:1},
+  gorgias:{n:'Gorgias',u:'https://www.gorgias.com',f:0},
+  tidio:{n:'Tidio',u:'https://www.tidio.com',f:1},
+  crisp:{n:'Crisp',u:'https://crisp.chat',f:1},
+  buffer:{n:'Buffer AI',u:'https://buffer.com',f:1},
+  hootsuite:{n:'Hootsuite AI',u:'https://www.hootsuite.com',f:1},
+  mailchimp:{n:'Mailchimp AI',u:'https://mailchimp.com',f:1},
+  brevo:{n:'Brevo AI',u:'https://www.brevo.com',f:1},
+  beehiiv:{n:'beehiiv',u:'https://www.beehiiv.com',f:1}
+};
+
+/* k: palabras clave (sin tildes). Las que llevan espacio pesan doble. p: [herramienta, motivo] de mejor a peor. */
+const CATS = [
+  {id:'investigar',t:'Investigar y buscar información',d:'Respuestas con fuentes citadas y datos actuales.',
+   k:['investig','buscar','busca','informacion sobre','fuentes','noticias','actualidad','comparar','comparativa','que es','documentarme','research','averiguar','estudio de mercado','fact'],
+   p:[['perplexity','Responde con fuentes enlazadas, pensada para buscar.'],['gemini','Buen buscador con acceso a Google y modo de investigación profunda.'],['chatgpt','Búsqueda web e informes largos de investigación.'],['claude','Muy bueno sintetizando mucho material y razonando sobre él.'],['grok','Útil para saber qué se dice ahora mismo en X.'],['youcom','Buscador con respuestas y fuentes, alternativa a los clásicos.'],['phind','Buscador técnico muy útil para dudas de desarrollo.']]},
+  {id:'academico',t:'Papers y búsqueda académica',d:'Literatura científica, estudios y revisiones.',
+   k:['paper','papers','articulo cientifico','articulos cientificos','cientific','academic','tesis','tfg','tfm','bibliografia','revision de literatura','estudios sobre','evidencia'],
+   p:[['elicit','Extrae datos de papers y ayuda en revisiones de literatura.'],['consensus','Resume lo que dice la ciencia ante una pregunta concreta.'],['notebooklm','Haz preguntas sobre tus propios PDFs con citas.'],['perplexity','Modo académico para buscar fuentes.']]},
+  {id:'estudiar',t:'Estudiar y entender documentos',d:'Resumir PDFs, preparar exámenes y aprender un tema.',
+   k:['estudiar','examen','oposicion','oposiciones','apuntes','resumir','resumen','pdf','libro','documento','entender','aprender','flashcard','temario','explicar','clase','universidad','deberes'],
+   p:[['notebooklm','Sube tus apuntes y genera resúmenes, preguntas y audio-resumen.'],['claude','Maneja documentos muy largos y explica con claridad.'],['chatgpt','Tutor paciente, genera tests y fichas.'],['gemini','Contexto largo y buena integración con Drive.']]},
+  {id:'escribir',t:'Escribir y mejorar textos',d:'Emails, artículos, cartas, guiones y corrección.',
+   k:['escribir','redactar','redaccion','texto','email','correo','carta','articulo','blog','guion','corregir','mejorar mi','copy','post','linkedin','cv','curriculum','discurso','storytelling','cuento','novela','newsletter'],
+   p:[['claude','Prosa natural y buen seguimiento del tono que le pidas.'],['chatgpt','Versátil y rápido para borradores y variaciones.'],['gemini','Cómodo si trabajas dentro de Gmail y Docs.'],['grammarly','Corrección y claridad mientras escribes.']]},
+  {id:'codigo',t:'Programar y depurar código',d:'Escribir, revisar y arreglar código, desde un script hasta un proyecto grande.',
+   k:['program','codigo','script','bug','error en','depurar','python','javascript','typescript','java ','sql','github','repositorio','api','backend','frontend','desarrollar','desarrollo','refactor','automatizar con codigo','software'],
+   p:[['claudecode','Agente en terminal que trabaja sobre todo tu proyecto.'],['cursor','Editor con IA integrada y buen conocimiento del repositorio.'],['ghcopilot','Autocompletado e integración en tu IDE habitual.'],['codex','Agente que lanza tareas de código en paralelo.'],['windsurf','Editor con agente autónomo.'],['aider','Edita archivos y hace commits desde la terminal.'],['sourcegraph','Busca y comprende código en repositorios grandes.'],['amazonq','Asistente de código integrado en AWS y tu IDE.']]},
+  {id:'apps',t:'Crear una web o app sin programar',d:'De la idea a una página o aplicación funcionando, describiéndola.',
+   k:['crear una web','crear una app','pagina web','landing','sitio web','mi web','aplicacion','app para','prototipo','mvp','tienda online','sin programar','sin saber programar','sin codigo','no code','web para mi','portfolio'],
+   p:[['lovable','Genera apps completas conversando, con base de datos.'],['bolt','Rápido para montar y publicar prototipos.'],['v0','Muy bueno en interfaces con aspecto cuidado.'],['replit','Entorno todo en uno que incluso publica por ti.']]},
+  {id:'imagen',t:'Generar imágenes',d:'Ilustraciones, fotos, logos, pósters y arte.',
+   k:['imagen','imagenes','ilustracion','foto','logo','poster','cartel','arte','dibujo','dibujar','portada','avatar','wallpaper','diseno de','generar una imagen','render','miniatura'],
+   p:[['midjourney','La mejor estética para arte e ilustración.'],['chatgpt','Edita y corrige por conversación, y escribe texto en la imagen.'],['gemini','Generador de imágenes de Google con buena fidelidad al texto pedido.'],['ideogram','Destaca poniendo texto legible: carteles y logos.'],['flux','Calidad fotorrealista; hay versiones abiertas.'],['leonardo','Buen control y consistencia de personajes.'],['stable','Modelo abierto con gran control y mucha comunidad.']]},
+  {id:'diseno',t:'Diseño gráfico y editar fotos',d:'Redes sociales, retoque, quitar fondos y piezas de marca.',
+   k:['redes sociales','instagram','story','stories','retocar','retoque','quitar fondo','editar foto','editar una foto','banner','flyer','plantilla','marca','branding','presentacion visual','tiktok','pinterest','canva'],
+   p:[['canva','Plantillas y herramientas de IA para publicar rápido.'],['firefly','Edición generativa dentro del flujo de Adobe, con enfoque comercial.'],['chatgpt','Edita fotos describiendo el cambio.'],['gemini','Edición de imágenes por texto muy fiel a la foto original.']]},
+  {id:'video',t:'Generar vídeo con IA',d:'Clips a partir de texto o de una imagen.',
+   k:['video','generar video','crear video','crear un video','video con ia','video corto','clip','animar','animacion','pelicula','cortometraje','anuncio','spot','reel','reels','shorts','text to video','videos'],
+   p:[['veo','Calidad cinematográfica y audio incluido.'],['runway','Control creativo y herramientas de edición sobre el clip.'],['kling','Gran movimiento y realismo, con créditos gratis.'],['sora','Clips generados desde ChatGPT.'],['hailuo','Buena relación calidad-precio por uso.'],['luma','Movimientos de cámara y física creíbles.'],['pika','Clips cortos con estilos muy variados.']]},
+  {id:'avatar',t:'Vídeos con presentador virtual',d:'Un avatar que habla: formación, ventas, vídeos explicativos.',
+   k:['avatar','presentador','presentadora','clon','clonar','hablando','formacion','curso en video','video explicativo','video corporativo','multi idioma','doblaje','doblar','traducir video','video de ventas'],
+   p:[['heygen','Avatares realistas y traducción de vídeo con tu voz.'],['synthesia','Orientado a formación y empresa, muchos idiomas.'],['did','Avatares y vídeos hablados a partir de una foto.'],['hourone','Presentadores virtuales para formación y empresa.']]},
+  {id:'editarvideo',t:'Editar vídeo',d:'Cortar, subtitular y pulir vídeo o podcast.',
+   k:['editar video','editar un video','montaje','subtitulos','subtitular','cortar','quitar silencios','podcast','youtube','tiktok','edicion de video','montar','clips largos'],
+   p:[['capcut','Subtítulos automáticos y efectos listos para redes.'],['descript','Edita el vídeo o audio como si fuera un documento de texto.'],['runway','Herramientas de IA para retocar y modificar tomas.'],['topaz','Mejora resolución y calidad de vídeos antiguos.']]},
+  {id:'voz',t:'Voz en off y texto a voz',d:'Locuciones, audiolibros y clonación de voz.',
+   k:['voz en off','voz','locucion','locutar','narrar','narracion','audiolibro','text to speech','leer en voz alta','voz realista','clonar voz','podcast con ia','sintetizar'],
+   p:[['elevenlabs','Voces muy naturales en muchos idiomas.'],['descript','Genera y corrige voz sobre tu propio audio.'],['notebooklm','Convierte tus documentos en un audio tipo podcast.'],['murf','Voces claras para presentaciones y audiolibros.'],['playht','Locuciones en muchos idiomas desde el navegador.']]},
+  {id:'musica',t:'Crear música',d:'Canciones completas, bandas sonoras y jingles.',
+   k:['musica','cancion','canciones','melodia','banda sonora','jingle','beat','instrumental','componer','letra de cancion'],
+   p:[['suno','Canciones completas con voz a partir de una descripción.'],['elevenlabs','Música y efectos de sonido generados por texto.'],['udio','Canciones con mucha calidad musical y buenas letras.'],['aiva','Composición instrumental y bandas sonoras.']]},
+  {id:'reuniones',t:'Transcribir audio y reuniones',d:'Actas, transcripciones y resúmenes de llamadas.',
+   k:['transcribir','transcripcion','reunion','reuniones','acta','actas','llamada','grabacion','entrevista','audio a texto','notas de reunion','zoom','meet','teams'],
+   p:[['otter','Transcribe en directo y resume reuniones.'],['fireflies','Se une a tus llamadas y guarda notas y tareas.'],['descript','Transcribe y edita el audio desde el texto.'],['notebooklm','Pregunta sobre transcripciones largas.']]},
+  {id:'presentaciones',t:'Hacer presentaciones',d:'Diapositivas a partir de un tema o de tus notas.',
+   k:['presentacion','presentaciones','diapositivas','powerpoint','slides','ppt','pitch','pitch deck','exponer','exposicion'],
+   p:[['gamma','Genera una presentación completa desde un texto.'],['canva','Plantillas cuidadas y fáciles de editar.'],['chatgpt','Estructura el contenido y los guiones de cada diapositiva.'],['claude','Redacta el contenido y la narrativa con buen criterio.']]},
+  {id:'datos',t:'Analizar datos y hojas de cálculo',d:'Excel, CSV, gráficos y conclusiones a partir de números.',
+   k:['excel','hoja de calculo','csv','datos','analizar datos','grafico','graficos','estadistica','formula','formulas','tabla','dashboard','informe de ventas','metricas','kpi','google sheets'],
+   p:[['chatgpt','Ejecuta análisis y genera gráficos sobre tu archivo.'],['claude','Analiza hojas de cálculo y explica los resultados.'],['julius','Pensada para preguntar a tus datos y obtener gráficos.'],['gemini','Cómodo si tus datos están en Google Sheets.'],['copilot','Integrado en Excel si usas Microsoft 365.']]},
+  {id:'automatizar',t:'Automatizar tareas repetitivas',d:'Conectar apps para que el trabajo ocurra solo.',
+   k:['automatizar','automatizacion','flujo de trabajo','tareas repetitivas','conectar apps','cada vez que','agente','agentes','workflow','integrar','zapier','rutina','bot'],
+   p:[['zapier','La más fácil: miles de apps y pasos con IA.'],['make','Flujos visuales con más control por menos dinero.'],['n8n','Muy flexible y se puede alojar tú mismo.'],['claude','Agentes que usan tus apps y ejecutan tareas de varios pasos.']]},
+  {id:'traducir',t:'Traducir',d:'Textos y documentos con tono natural.',
+   k:['traducir','traduccion','traducir un','idioma','ingles a','del ingles','al ingles','frances','aleman','italiano','portugues','chino','japones'],
+   p:[['deepl','Traducciones muy naturales, también de documentos completos.'],['claude','Respeta tono y contexto, y explica los matices.'],['chatgpt','Traduce y adapta al registro que pidas.'],['gemini','Traducción integrada con Google.']]},
+  {id:'general',t:'Asistente para todo',d:'Preguntas variadas, ideas, planificación y consejo del día a día.',
+   k:['ayuda','duda','idea','ideas','consejo','planificar','plan de','organizar','decidir','recomendar','recomendacion','viaje','receta','dieta','entrenamiento','regalo','que hago','pregunta'],
+   p:[['chatgpt','El más completo y conocido para uso general.'],['claude','Respuestas matizadas y buen razonamiento.'],['gemini','Muy bien integrado con Google y Android.'],['copilot','Gratis y con acceso a la web desde Microsoft.'],['mistral','Alternativa europea con plan gratuito.'],['deepseek','Razonamiento potente con uso gratuito.']]},
+  {id:'seo',t:'SEO y contenido para buscadores',d:'Posicionar una web y escribir pensando en Google.',
+   k:['seo','posicionar','posicionamiento','google','palabra clave','palabras clave','keyword','keywords','backlink','meta descripcion','trafico organico','ranking','buscadores'],
+   p:[['surfer','Analiza keywords y optimiza textos para posicionar.'],['chatgpt','Genera títulos, textos y meta descripciones.'],['claude','Planifica una estrategia de contenidos con criterio.'],['gemini','Investiga tendencias y términos desde Google.']]},
+  {id:'marketing',t:'Marketing y campañas',d:'Estrategia, anuncios, correos y creatividades para vender más.',
+   k:['marketing','campaña','campana','publicidad','anuncios','ads','lead','clientes','ventas','estrategia de marketing','segmentacion','embudo','funnel','newsletter'],
+   p:[['chatgpt','Campañas, copies y calendarios de contenidos.'],['claude','Estrategia y mensajes bien razonados.'],['copyai','Plantillas rápidas de copy para anuncios y correos.'],['jasper','Copy de marca a escala, orientado a equipos.'],['canva','Creativas y piezas visuales para campañas.']]},
+  {id:'empleo',t:'Empleo y entrevistas',d:'CV, cartas, LinkedIn y preparación de entrevistas.',
+   k:['empleo','trabajo','buscar empleo','cv','curriculum','entrevista','entrevistas','oferta de trabajo','linkedin','carrera','carta de presentacion','portfolio'],
+   p:[['chatgpt','Adapta tu CV y prepara preguntas de entrevista.'],['claude','Pule cartas y respuestas con matices.'],['grammarly','Corrige y mejora tu CV.'],['canva','CV y plantillas visuales profesionales.'],['gemini','Prepara tu perfil de LinkedIn y busca ofertas.']]},
+  {id:'idiomas',t:'Aprender idiomas',d:'Practicar conversación, gramática, pronunciación y vocabulario.',
+   k:['aprender idiomas','aprender ingles','idioma','idiomas','ingles','pronunciacion','vocabulario','conversacion en','practicar ingles','frances','aleman','italiano'],
+   p:[['chatgpt','Practica conversaciones y explica gramática.'],['gemini','Ejercicios y traducción con contexto.'],['claude','Corrige textos y simula conversaciones.'],['duolingo','Rutina diaria con lecciones adaptativas.']]},
+  {id:'matematicas',t:'Matemáticas y cálculo',d:'Ecuaciones, cálculo, álgebra y problemas paso a paso.',
+   k:['matematicas','mates','calculo','integral','derivada','ecuacion','algebra','probabilidad','estadistica','resolver una ecuacion','conversion de unidades'],
+   p:[['wolfram','Resuelve ecuaciones, cálculo y conversiones.'],['chatgpt','Explica paso a paso cada operación.'],['claude','Razonamiento detallado y comprobación.'],['julius','Resuelve problemas numéricos y dibuja gráficos.']]},
+  {id:'legal',t:'Textos legales y contratos',d:'Borradores y explicaciones legales; no sustituyen a un abogado.',
+   k:['legal','abogado','contrato','contratos','terminos y condiciones','politica de privacidad','aviso legal','clausula','normativa','rgpd','licencia'],
+   p:[['claude','Redacta y revisa cláusulas con precisión.'],['chatgpt','Borradores de contratos y políticas.'],['gemini','Consulta normativa y ejemplos.'],['deepl','Traduce documentos legales conservando el tono.']]},
+  {id:'ux',t:'Diseño UX e interfaces',d:'Bocetos, prototipos y pantallas antes de programar.',
+   k:['ux','ui','interfaz','interfaces','prototipo','wireframe','figma','diseno de app','experiencia de usuario','usuario','maquetacion','disenar una app'],
+   p:[['figma','Diseña pantallas y genera componentes con IA.'],['framer','Convierte ideas en webs interactivas sin código.'],['uizard','Pasa un boceto a prototipo editable.'],['v0','Genera interfaces con aspecto cuidado.']]},
+  {id:'audioedit',t:'Editar y limpiar audio',d:'Quitar ruido, arreglar grabaciones y pulir un podcast.',
+   k:['editar audio','limpiar audio','quitar ruido','reducir ruido','ruido de fondo','audio','grabacion','ecualizar','masterizar','podcast'],
+   p:[['descript','Limpia audio y edita como si fuera texto.'],['elevenlabs','Genera voces y efectos para completar tu grabación.'],['podcastle','Graba, limpia y publica podcasts en el navegador.'],['murf','Añade o corrige locuciones con voces artificiales.']]},
+  {id:'resumirvideo',t:'Resumir vídeos y YouTube',d:'Sacar lo importante de un vídeo largo sin verlo entero.',
+   k:['resumir video','resumir un video','resumen de video','resumen de youtube','video de youtube','youtube','video largo','capitulos','momentos clave','transcribir youtube','resumir podcast'],
+   p:[['notebooklm','Pega un enlace de YouTube y pregunta sobre él.'],['gemini','Resume vídeos y extrae momentos clave.'],['descript','Transcribe y resume el audio del vídeo.'],['otter','Guarda transcripciones y resúmenes de grabaciones.']]},
+  {id:'datosviz',t:'Dashboards y visualización',d:'Cuadros de mando e informes visuales con tus datos.',
+   k:['dashboard','cuadro de mando','power bi','tableau','looker','visualizacion','informe visual','reporte','graficos','kpi'],
+   p:[['powerbi','Dashboards interactivos conectados a tus datos.'],['lookerstudio','Cuadros de mando gratis dentro de Google.'],['tableau','Visualizaciones avanzadas para análisis profundo.'],['julius','Genera gráficos preguntando en lenguaje natural.']]},
+  {id:'notas',t:'Organizar notas y conocimientos',d:'Segundo cerebro, apuntes conectados y documentos consultables.',
+   k:['notas','organizar notas','notion','obsidian','base de conocimientos','wiki','segundo cerebro','apuntes','guardar ideas'],
+   p:[['notion','Notas, bases de datos y IA para resumir.'],['notebooklm','Convierte tus notas en una fuente que puedes preguntar.'],['obsidian','Segundo cerebro local y muy conectado.'],['chatgpt','Estructura y ordena apuntes.']]},
+  {id:'finanzas',t:'Finanzas y presupuestos',d:'Organizar gastos y simular escenarios; no es asesoramiento financiero.',
+   k:['finanzas','presupuesto','ahorrar','ahorro','gastos','sueldo','deuda','hipoteca','inversiones','presupuesto familiar'],
+   p:[['julius','Analiza presupuestos y proyecta escenarios.'],['chatgpt','Explica conceptos y crea hojas de cálculo.'],['claude','Revisa decisiones con matices.'],['gemini','Trabaja directamente con Google Sheets.']]},
+  {id:'negocio',t:'Plan de negocio y estrategia',d:'Modelo de negocio, mercado, competencia y presentación del proyecto.',
+   k:['plan de negocio','negocio','emprender','emprendimiento','startup','modelo de negocio','mercado','competencia','pitch','idea de negocio'],
+   p:[['chatgpt','Modelo de negocio, pitch y estructura del plan.'],['claude','Estrategia, segmentación y narrativa.'],['perplexity','Datos de mercado con fuentes.'],['gamma','Convierte el plan en una presentación.']]},
+  {id:'salud',t:'Salud y bienestar',d:'Orientación general y hábitos; consulta siempre a un profesional sanitario.',
+   k:['salud','bienestar','nutricion','ejercicio','dormir','habitos','sintomas','medico','salud mental'],
+   p:[['chatgpt','Explica conceptos y prepara preguntas para tu médico.'],['claude','Orientación general y cambios de hábitos.'],['gemini','Información y seguimiento de rutinas.']]},
+  {id:'buscadores',t:'Buscadores con IA',d:'Encontrar respuestas rápidas y comparar motores de búsqueda.',
+   k:['buscador','buscadores','buscar en internet','motor de busqueda','resultados de busqueda','kagi','brave','exa'],
+   p:[['kagi','Buscador de pago muy preciso y sin rastreo.'],['brave','Buscador con respuestas IA y foco en privacidad.'],['exa','Buscador neural pensado para investigación y agentes.'],['youcom','Respuestas con fuentes desde un buscador alternativo.'],['perplexity','Buscador conversacional con citas.']]},
+  {id:'academicoavanzado',t:'Mapas y análisis de literatura',d:'Ver relaciones entre papers, citas y autores.',
+   k:['mapa de literatura','literatura relacionada','articulos relacionados','grafo de investigacion','bibliometria','citas','referencias','connected papers','researchrabbit'],
+   p:[['connectedpapers','Mapa visual de trabajos relacionados a partir de un paper.'],['researchrabbit','Descubre papers siguiendo citas y autores.'],['scite','Comprueba cómo se cita un estudio y en qué contexto.'],['semantic','Busca artículos y extrae conceptos clave.'],['elicit','Síntesis automática de evidencia científica.']]},
+  {id:'correccion',t:'Corregir y pulir textos',d:'Gramática, claridad, estilo y reescrituras.',
+   k:['corregir texto','mejorar redaccion','parafrasear','reescribir','claridad','estilo','gramatica','quitar palabras','tono del texto'],
+   p:[['hemingway','Detecta frases largas y voz pasiva para ganar claridad.'],['quillbot','Parafrasea y corrige con distintos modos.'],['wordtune','Reescribe frases manteniendo el significado.'],['grammarly','Corrección continua mientras escribes.'],['writer','Estilo de marca y consistencia para equipos.']]},
+  {id:'copywriting',t:'Copywriting y ventas',d:'Titulares, emails y textos que buscan conversión.',
+   k:['copywriting','copy','texto de ventas','titular','argumento de venta','conversion','email de ventas','landing de ventas'],
+   p:[['copyai','Genera copies para anuncios, correos y webs.'],['jasper','Copy de marca a gran escala.'],['rytr','Copies rápidos en muchos tonos e idiomas.'],['writer','Mantiene el tono de marca en todos los textos.'],['chatgpt','Versátil para variaciones y tests A/B.']]},
+  {id:'diapositivas',t:'Presentaciones alternativas',d:'Otras formas de crear slides narrativas y visuales.',
+   k:['diapositivas','slides','presentacion','powerpoint','pitch deck','tome','beautiful ai'],
+   p:[['tome','Presentaciones narrativas generadas desde un texto.'],['beautifulai','Diseño automático de slides con buen acabado.'],['gamma','Presentación completa a partir de un esquema.'],['canva','Plantillas fáciles de personalizar.']]},
+  {id:'cuadernos',t:'Cuadernos y análisis colaborativo',d:'Trabajar con datos y código en entornos compartidos.',
+   k:['cuaderno','cuadernos','notebook','jupyter','colab','analisis colaborativo','python para datos','deepnote','rows'],
+   p:[['rows','Hojas de cálculo con IA y bloques reutilizables.'],['hex','Cuadernos y apps de datos para equipos.'],['deepnote','Notebook colaborativo en la nube.'],['colab','Cuadernos Python gratis de Google.'],['julius','Preguntas en lenguaje natural sobre tus datos.']]},
+  {id:'agentescodigo',t:'Agentes de programación',d:'Delegar tareas de código completas, no solo autocompletar.',
+   k:['agente de codigo','agente autonomo','programar con ia','devin','openhands','cline','roocode','que agente uso'],
+   p:[['devin','Agente autónomo que planifica y ejecuta tareas de software.'],['openhands','Agente de código abierto para tareas complejas.'],['cline','Agente en el editor que edita archivos y ejecuta comandos.'],['roocode','Variante flexible de agente en el editor.'],['continuedev','Asistente de código que se conecta a tu editor.'],['codeium','Autocompletado y chat de código.'],['sweep','Convierte incidencias en cambios de código.']]},
+  {id:'devops',t:'DevOps y despliegue',d:'Infraestructura, pipelines, APIs y puesta en producción.',
+   k:['devops','deploy','desplegar','docker','kubernetes','pipeline','ci cd','servidor','infraestructura','aws','azure'],
+   p:[['amazonq','Ayuda con AWS, infraestructura y código.'],['postman','Pruebas y documentación de APIs.'],['cline','Ejecuta comandos y edita configuración desde el editor.'],['chatgpt','Explica y genera archivos de configuración.'],['claude','Revisa pipelines y detecta problemas.']]},
+  {id:'apis',t:'APIs e integraciones técnicas',d:'Diseñar, probar y conectar endpoints.',
+   k:['api','apis','endpoint','rest','graphql','webhook','json','integrar api','postman'],
+   p:[['postman','Diseña, prueba y documenta APIs.'],['chatgpt','Genera ejemplos de peticiones y esquemas.'],['claude','Revisa contratos de API y errores.'],['cursor','Escribe y depura código de integración.'],['zapier','Conecta APIs sin programar.'],['n8n','Flujos técnicos con nodos y webhooks.']]},
+  {id:'testing',t:'Pruebas y QA',d:'Tests unitarios, de integración y búsqueda de errores.',
+   k:['testing','test','pruebas','prueba unitaria','unit test','playwright','selenium','qa','encontrar bugs'],
+   p:[['ghcopilot','Genera tests dentro de tu IDE.'],['claudecode','Crea y ejecuta pruebas sobre el repositorio.'],['cursor','Escribe tests con contexto del proyecto.'],['codex','Lanza tareas de testing en paralelo.'],['continuedev','Completa pruebas a medida que escribes.'],['tabnine','Autocompletado de código y tests.']]},
+  {id:'fotografia',t:'Fotografía y retoque',d:'Limpiar fotos, quitar fondos y mejorar resultados.',
+   k:['fotografia','foto','retocar foto','quitar fondo','quitar el fondo','fondo transparente','fondo de una foto','limpiar foto','mejorar foto','retoque'],
+   p:[['removebg','Quita el fondo de una imagen en segundos.'],['cleanup','Borra objetos no deseados de una foto.'],['photoai','Mejora retratos y calidad de fotos.'],['firefly','Retoque generativo dentro de Adobe.'],['adobeexpress','Ajustes rápidos y plantillas.'],['leonardo','Genera variaciones y fondos.']]},
+  {id:'marca',t:'Identidad de marca',d:'Logo, paleta, tipografía y estilo visual coherente.',
+   k:['marca','branding','identidad visual','paleta de colores','tipografia','logotipo','estilo de marca'],
+   p:[['recraft','Genera logotipos y elementos de marca vectoriales.'],['ideogram','Crea carteles y logos con texto legible.'],['figma','Construye el sistema visual y componentes.'],['canva','Aplica la identidad a plantillas y redes.'],['midjourney','Explora direcciones visuales y moodboards.'],['adobeexpress','Exporta piezas listas para publicar.']]},
+  {id:'clipsia',t:'Clips virales para redes',d:'Vídeos cortos, reels y shorts con estilo propio.',
+   k:['clip viral','reels','shorts','tiktok','video para redes','clip corto','higgsfield','vidu'],
+   p:[['higgsfield','Clips con movimientos y estilos muy cuidados.'],['vidu','Genera clips a partir de texto o imagen.'],['krea','Imagen y vídeo con control creativo en tiempo real.'],['pika','Clips cortos con efectos y estilos variados.'],['capcut','Edita y subtitula para publicar rápido.']]},
+  {id:'doblaje',t:'Doblaje y sincronización',d:'Voces, lip sync y traducción de vídeos.',
+   k:['doblaje','doblar video','sincronizar labios','lip sync','voz para video','traducir video','clonar voz'],
+   p:[['lipsync','Sincroniza labios con audio o texto.'],['resemble','Clona voces y genera locuciones.'],['speechify','Convierte texto en voz natural para escuchar.'],['heygen','Traduce vídeos con tu propia voz.'],['elevenlabs','Voces realistas en muchos idiomas.'],['descript','Corrige voz y audio desde el texto.']]},
+  {id:'bandasonoras',t:'Música para proyectos',d:'Bandas sonoras, jingles y efectos para vídeos.',
+   k:['musica para video','banda sonora','jingle','musica libre','efectos de sonido','soundtrack','musica de fondo'],
+   p:[['suno','Canciones completas con voz.'],['udio','Composiciones musicales de alta calidad.'],['aiva','Música instrumental y cinematográfica.'],['boomy','Crea pistas y publica desde el navegador.'],['soundraw','Música editable por duración y ánimo.'],['mubert','Música de fondo continua para streams y vídeos.']]},
+  {id:'podcast',t:'Podcast de principio a fin',d:'Grabar, editar, transcribir y publicar episodios.',
+   k:['podcast','podcast semanal','hacer un podcast','crear un podcast','episodio de podcast','episodio','grabar podcast','show notes','oyentes','spotify','microfono'],
+   p:[['podcastle','Graba y limpia episodios desde el navegador.'],['descript','Edita el podcast como un documento.'],['elevenlabs','Genera intro, voces y efectos.'],['otter','Transcribe cada episodio.'],['murf','Añade locuciones cuando grabar no es posible.'],['canva','Portadas y piezas promocionales.']]},
+  {id:'notasreunion',t:'Actas y notas de reuniones',d:'Resúmenes, tareas y decisiones de cada llamada.',
+   k:['notas de reunion','acta de reunion','grabar reunion','resumen de llamada','granola','fathom','sembly'],
+   p:[['granola','Notas automáticas mientras hablas.'],['fathom','Graba, transcribe y resume llamadas.'],['sembly','Actas y tareas a partir de reuniones.'],['tldv','Resúmenes con momentos destacados.'],['otter','Transcripción en directo.'],['fireflies','Se une a la llamada y guarda notas.']]},
+  {id:'integraciones',t:'Conectar apps y servicios',d:'Más formas de automatizar flujos entre herramientas.',
+   k:['conectar apps','integrar apps','flujo','automatizacion','power automate','pipedream','activepieces'],
+   p:[['zapier','La opción más fácil para conectar apps.'],['make','Flujos visuales con más control.'],['n8n','Autohospedable y muy flexible.'],['pipedream','Integraciones orientadas a desarrolladores.'],['powerautomate','Automatización dentro de Microsoft 365.'],['activepieces','Alternativa de código abierto.']]},
+  {id:'gestionproyectos',t:'Gestión de proyectos y tareas',d:'Organizar equipos, tableros y bases de trabajo.',
+   k:['gestion de proyectos','tareas','proyecto','equipo','kanban','clickup','asana','monday','airtable','coda'],
+   p:[['clickup','Tareas, documentos y IA en un mismo lugar.'],['asana','Seguimiento de proyectos con asistente IA.'],['monday','Tableros visuales y automatizaciones.'],['airtable','Bases de datos con vistas y IA.'],['coda','Documentos que funcionan como apps.'],['notion','Notas y bases de datos conectadas.']]},
+  {id:'ecommerce',t:'Tienda online y ventas',d:'Productos, textos, imágenes y campañas para vender.',
+   k:['tienda online','ecommerce','shopify','producto','catalogo','carrito','ventas online','tienda virtual'],
+   p:[['chatgpt','Descripciones de producto y estrategia de ventas.'],['canva','Fotos y banners para el catálogo.'],['lovable','Crea la tienda conversando.'],['jasper','Copies de producto a escala.'],['copyai','Textos para anuncios y emails.'],['gamma','Presentación del plan de ventas.']]},
+  {id:'rrhh',t:'Recursos humanos',d:'Selección, contratos, onboarding y comunicación interna.',
+   k:['rrhh','recursos humanos','seleccion de personal','empleados','nomina','onboarding','contrato laboral'],
+   p:[['chatgpt','Descripciones de puesto y guiones de entrevista.'],['claude','Políticas y comunicaciones internas.'],['notion','Manuales y bases de conocimiento.'],['zapier','Automatiza tareas de selección.'],['grammarly','Corrige documentos de RRHH.'],['intercom','Atención a candidatos y empleados.']]},
+  {id:'educacion',t:'Crear material educativo',d:'Clases, ejercicios, evaluaciones y cursos.',
+   k:['material educativo','leccion','clase','taller','curso','ejercicios','evaluacion','didactico','profesor'],
+   p:[['chatgpt','Diseña clases, ejercicios y rúbricas.'],['claude','Explica temas con profundidad y ejemplos.'],['gamma','Convierte el temario en diapositivas.'],['canva','Recursos visuales para el aula.'],['quizlet','Fichas y tests automáticos.'],['khanmigo','Tutoría personalizada siguiendo el currículo.']]},
+  {id:'infantil',t:'Contenido para niños',d:'Cuentos, actividades y materiales adaptados a su edad.',
+   k:['ninos','infantil','cuento para ninos','colegio','escuela','educar a ninos','actividades infantiles'],
+   p:[['chatgpt','Cuentos y explicaciones adaptadas a cada edad.'],['claude','Actividades educativas con lenguaje claro.'],['canva','Láminas y materiales imprimibles.'],['suno','Canciones infantiles originales.'],['ideogram','Ilustraciones para los cuentos.'],['quizlet','Juegos de vocabulario.']]},
+  {id:'viajes',t:'Planificar viajes',d:'Itinerarios, presupuesto, vuelos y planes sobre la marcha.',
+   k:['viaje','viajar','planificar viaje','viaje de','itinerario de viaje','itinerario','vuelos','hotel','ruta','turismo','destino','vacaciones'],
+   p:[['chatgpt','Itinerarios detallados y consejos prácticos.'],['gemini','Investiga destinos y opciones con Google.'],['perplexity','Compara precios y fuentes actuales.'],['layla','Planea viajes conversando.'],['roamaround','Genera itinerarios por destino y días.'],['notebooklm','Guarda y pregunta sobre tu plan de viaje.']]},
+  {id:'cocina',t:'Cocina y recetas',d:'Ideas con lo que tienes, menús y técnicas de cocción.',
+   k:['receta','cocinar','cocina','ingredientes','plato','menu','dieta','comida','nevera'],
+   p:[['chatgpt','Recetas con los ingredientes que tengas.'],['gemini','Busca variantes y tiempos de cocción.'],['chefgpt','Ideas de platos paso a paso.'],['claude','Menús semanales y explicaciones.'],['julius','Calcula cantidades y valores nutricionales.']]},
+  {id:'deporte',t:'Entrenamiento y deporte',d:'Rutinas, progreso y hábitos saludables.',
+   k:['entrenamiento','gimnasio','deporte','correr','rutina','musculacion','fitness','ejercicio fisico'],
+   p:[['chatgpt','Rutinas adaptadas a tu nivel y tiempo.'],['claude','Explica técnica y previene errores.'],['gemini','Investiga métodos y dudas.'],['fitbod','Entrenos generados según tu equipo y objetivos.'],['julius','Registra y analiza tu progreso.']]},
+  {id:'bricolaje',t:'Bricolaje y hogar',d:'Reformas, muebles, herramientas y arreglos caseros.',
+   k:['bricolaje','hogar','reforma','mueble','pintar','arreglar','herramienta','instalar'],
+   p:[['chatgpt','Guías paso a paso y lista de materiales.'],['claude','Explica dudas técnicas con seguridad.'],['gemini','Busca medidas, normas y ejemplos.'],['perplexity','Compara productos y soluciones con fuentes.']]},
+  {id:'soporte',t:'Atención al cliente',d:'Responder quejas, tickets y dudas con buen tono.',
+   k:['atencion al cliente','soporte','ticket','queja','cliente','respuesta a cliente','chatbot'],
+   p:[['chatgpt','Redacta respuestas claras y empáticas.'],['claude','Matiza tonos delicados y escalados.'],['intercom','Chatbot y soporte automatizado.'],['zapier','Conecta tickets con tus otras apps.'],['grammarly','Corrige antes de enviar.']]},
+  {id:'sintomas',t:'Orientación sobre síntomas',d:'Prepara tu consulta médica; no sustituye un diagnóstico.',
+   k:['tengo sintomas','checker de sintomas','sintomas y signos','orientacion medica','consulta de sintomas'],
+   p:[['adahealth','Orientación estructurada sobre síntomas.'],['chatgpt','Prepara preguntas para el médico.'],['claude','Explica términos y opciones con cautela.'],['gemini','Busca información sanitaria fiable.']]},
+  {id:'local',t:'IA local y privada',d:'Modelos que corren en tu equipo, sin depender de la nube.',
+   k:['ia local','modelo local','sin nube','offline','privacidad','auto hospedar','ollama','lm studio','gpt4all'],
+   p:[['ollama','Modelos abiertos en tu máquina con un solo comando.'],['lmstudio','Interfaz para usar modelos locales cómodamente.'],['gpt4all','Chat local ligero y gratuito.'],['jan','Alternativa local a ChatGPT con interfaz propia.'],['huggingface','Repositorio de modelos y comunidades abiertas.']]},
+  {id:'modelos',t:'Modelos abiertos y experimentación',d:'Explorar, comparar y ajustar modelos de lenguaje abiertos.',
+   k:['modelo abierto','modelos abiertos','hugging face','open source','fine tuning','ajustar modelo','pesos del modelo','llm'],
+   p:[['huggingface','Explora modelos, datasets y demos de la comunidad.'],['ollama','Prueba modelos abiertos en local.'],['lmstudio','Compara modelos y ajusta parámetros.'],['stable','Modelo abierto también para imágenes.'],['mistral','Modelos europeos con licencia abierta.']]},
+  {id:'agentbuilder',t:'Crear agentes y flujos visuales',d:'Montar asistentes con nodos, sin casi programar.',
+   k:['crear agente','constructor de agentes','flujo visual','flowise','langflow','dify','coze','bot con ia','agente personalizado'],
+   p:[['flowise','Construye agentes conectando nodos en un lienzo.'],['langflow','Flujos visuales basados en LangChain.'],['dify','Plataforma para apps y agentes con IA.'],['coze','Crea bots conversacionales y publícalos.'],['relevance','Agentes para tareas de investigación y operaciones.'],['n8n','Automatizaciones con nodos y lógica propia.']]},
+  {id:'avatar2',t:'Más avatares de vídeo',d:'Presentadores virtuales para formación, ventas y redes.',
+   k:['avatar de video','avatar para','avatar para cursos','avatar para formacion','presentador virtual','video con avatar','colossyan','elai','synthesys'],
+   p:[['colossyan','Avatares para cursos y formación corporativa.'],['elai','Convierte artículos en vídeos con presentador.'],['synthesys','Avatares y locuciones en muchos idiomas.'],['heygen','Avatares realistas y doblaje de vídeo.'],['synthesia','Muy orientado a empresa y formación.']]},
+  {id:'voicechange',t:'Cambiar y clonar voz',d:'Efectos de voz, clonación y locutores artificiales.',
+   k:['cambiar voz','cambiar la voz','clonar voz','voz artificial','voz de mi grabacion','locutor','wellsaid','lovo','modificar voz'],
+   p:[['voicemod','Cambia tu voz en directo mientras hablas.'],['lovoai','Locuciones realistas en muchos idiomas.'],['wellsaid','Voces profesionales para empresas.'],['resemble','Clonación de voz y generación controlada.'],['elevenlabs','La opción más natural para clonar y narrar.']]},
+  {id:'filmora',t:'Editar vídeo con IA',d:'Montaje asistido, mejoras y efectos automáticos.',
+   k:['editar video con ia','editar un video','editar con filmora','en filmora','filmora','montaje automatico','mejorar video','arreglar video','editor de video'],
+   p:[['filmora','Editor con herramientas IA para cortar y mejorar.'],['capcut','Rápido y muy usado para redes sociales.'],['descript','Edita el vídeo desde el texto transcrito.'],['runway','Efectos generativos sobre tus planos.'],['topaz','Mejora resolución y nitidez.']]},
+  {id:'photoapps',t:'Apps de foto con IA',d:'Mejorar retratos, borrar objetos y crear imágenes desde el móvil.',
+   k:['app de fotos','app para fotos','photoleap','pixelup','dreamina','mejorar foto','mejorar fotos','fotos desde el movil','foto con ia','fotos con ia'],
+   p:[['photoleap','Edición creativa y efectos desde el móvil.'],['pixelup','Restaura y mejora fotos antiguas.'],['dreamina','Genera imágenes a partir de texto.'],['photoai','Retratos y fotos de perfil muy pulidos.'],['removebg','Quita fondos en un clic.']]},
+  {id:'slidesai',t:'Diapositivas desde texto',d:'Generar presentaciones automáticas a partir de un guion.',
+   k:['slides ai','generar diapositivas','presentacion automatica','slidesai','crear slides'],
+   p:[['slidesai','Convierte un texto en diapositivas dentro de Google Slides.'],['tome','Presentaciones narrativas completas.'],['gamma','Slides a partir de un esquema.'],['beautifulai','Diseño automático con acabado profesional.']]},
+  {id:'chatbots',t:'Chatbots para tu web',d:'Responder preguntas con un bot entrenado con tus documentos.',
+   k:['chatbot','bot para web','asistente para mi web','responder preguntas','manychat','landbot','chatbot con documentos'],
+   p:[['chatbase','Entrena un bot con el contenido de tu web.'],['docsbot','Chatbot sobre tu documentación y FAQ.'],['sitegpt','Asistente para tu sitio en minutos.'],['manychat','Bot de mensajería para Marketing y soporte.'],['landbot','Flujos de conversación visuales.'],['chatfuel','Bots para Messenger e Instagram.']]},
+  {id:'soporte2',t:'Plataformas de soporte',d:'Bandejas, chat en vivo y respuestas automáticas.',
+   k:['chat de soporte','tidio','crisp','gorgias','bandeja de soporte','soporte en vivo'],
+   p:[['tidio','Chat en vivo con asistente IA.'],['crisp','Bandeja compartida y chatbot.'],['gorgias','Soporte pensado para tiendas online.'],['intercom','Chatbot y soporte automatizado.'],['zapier','Conecta los tickets con tus apps.']]},
+  {id:'redes',t:'Gestionar redes sociales',d:'Programar publicaciones y mantener el tono de marca.',
+   k:['redes sociales','gestionar redes','gestionar redes sociales','gestionar mis redes','publicar en instagram','community manager','buffer','hootsuite','programar publicaciones'],
+   p:[['buffer','Programa publicaciones y usa IA para el copy.'],['hootsuite','Gestión de varias redes con asistente IA.'],['manychat','Automatiza conversaciones y DMs.'],['canva','Piezas visuales listas para cada red.'],['copyai','Textos para publicaciones y campañas.']]},
+  {id:'email',t:'Emails y newsletters',d:'Redactar, segmentar y enviar campañas de correo.',
+   k:['email marketing','newsletter','enviar newsletter','newsletter con ia','campana de correo','mailchimp','brevo','beehiiv','correos masivos'],
+   p:[['mailchimp','Campañas de correo con asistente IA.'],['brevo','Email y CRM con funciones IA.'],['beehiiv','Newsletters con herramientas de crecimiento.'],['copyai','Asuntos y textos que mejoran la apertura.'],['jasper','Copies de marca para secuencias completas.']]}
+];
+
+const UI = {
+ es:{title:'TheBestIA',lead:'Cuéntame qué quieres resolver con tus propias palabras. Te digo qué tipo de IA necesitas y cuáles son las mejores opciones para ese trabajo.',label:'¿Cuál es tu problema?',placeholder:'Ejemplo: quiero hacer un vídeo corto para Instagram con una voz en off',free:'Solo opciones con plan gratuito',go:'Recomendar IAs',try:'Prueba con:',empty:'Escribe tu problema arriba, o pulsa uno de los ejemplos.',noTitle:'No he reconocido el tipo de tarea.',noBody:'Prueba a decir qué quieres obtener (un vídeo, un texto, una web, un análisis) y con qué material cuentas. Mientras tanto, para empezar con cualquier cosa sirven ',detected:'Lo que necesitas:',multi:'Tu problema mezcla varias tareas. Verás una lista por cada una, ordenadas de más a menos relacionada con lo que escribiste.',best:'Mejor opción',freeBadge:'Plan gratuito',paid:'De pago',footer:'Selección revisada en noviembre de 2026. Las IAs cambian rápido: comprueba precios y límites del plan gratuito en la web de cada herramienta.',suggest:'💡 Proponer una IA o un problema',close:'✕ Cerrar propuestas',sugLabel:'¿Qué falta en TheBestIA?',sugPlaceholder:'Ejemplo: añade la IA X para editar PDFs, o añade el problema "organizar un congreso"',sugMail:'Abrir en mi correo',sugCopy:'Copiar propuesta',sugNote:'Se abre tu correo con destino a blaibgf11@gmail.com. También puedes copiar el texto.',sugEmpty:'Escribe primero tu propuesta.',sugMailOk:'Se ha abierto tu correo a blaibgf11@gmail.com. Solo envíalo.',sugCopyOk:'Propuesta copiada. Pégala donde quieras enviarla.',sugCopyFail:'No se pudo copiar. Selecciona el texto manualmente.',subject:'Propuesta para TheBestIA',bodyStart:'Hola,\n\nQuiero proponer para TheBestIA:\n\n',bodyEnd:'\n\nGracias.'},
+ en:{title:'TheBestIA',lead:'Tell me what you want to solve in your own words. I will tell you which kind of AI you need and the best options for the job.',label:'What is your problem?',placeholder:'Example: I want to make a short Instagram video with a voice-over',free:'Only options with a free plan',go:'Recommend AIs',try:'Try:',empty:'Write your problem above, or click one of the examples.',noTitle:'I did not recognize the task type.',noBody:'Try saying what you want to get (a video, a text, a website, an analysis) and what material you have. Meanwhile, for almost anything you can start with ',detected:'You need:',multi:'Your problem mixes several tasks. You will see one list per task, ordered from most to least related to what you wrote.',best:'Best option',freeBadge:'Free plan',paid:'Paid',footer:'Reviewed in November 2026. AIs change fast: check prices and free-plan limits on each tool site.',suggest:'💡 Suggest an AI or a problem',close:'✕ Close suggestions',sugLabel:'What is missing in TheBestIA?',sugPlaceholder:'Example: add tool X for editing PDFs, or add the problem "organize a conference"',sugMail:'Open in my email',sugCopy:'Copy suggestion',sugNote:'Your email opens with blaibgf11@gmail.com as recipient. You can also copy the text.',sugEmpty:'Write your suggestion first.',sugMailOk:'Your email to blaibgf11@gmail.com is open. Just send it.',sugCopyOk:'Suggestion copied. Paste it wherever you want to send it.',sugCopyFail:'Could not copy. Select the text manually.',subject:'Suggestion for TheBestIA',bodyStart:'Hello,\n\nI want to suggest for TheBestIA:\n\n',bodyEnd:'\n\nThanks.'}
+};
+
+/* Títulos, descripciones y motivos en inglés. Si falta una entrada se usa el español. */
+const I18N_CATS = {
+ investigar:{t:'Research and find information',d:'Answers with cited sources and up-to-date data.',r:['Answers with linked sources, built for searching.','Good searcher with Google access and deep research mode.','Web search and long research reports.','Great at synthesizing large amounts of material.']},
+ academico:{t:'Papers and academic search',d:'Scientific literature, studies and reviews.',r:['Extracts data from papers and helps with literature reviews.','Summarizes what science says about a specific question.','Ask questions about your own PDFs with citations.','Academic mode to find sources.']},
+ estudiar:{t:'Study and understand documents',d:'Summarize PDFs, prep for exams and learn a topic.',r:['Upload your notes and get summaries, questions and audio overviews.','Handles very long documents and explains clearly.','Patient tutor; creates tests and flashcards.','Long context and tight Drive integration.']},
+ escribir:{t:'Write and improve texts',d:'Emails, articles, letters, scripts and proofreading.',r:['Natural prose that follows the tone you request.','Versatile and fast for drafts and variations.','Handy inside Gmail and Docs.','Grammar and clarity while you write.']},
+ codigo:{t:'Code and debugging',d:'Write, review and fix code, from a script to a large project.',r:['Terminal agent that works across your whole project.','Editor with built-in AI and repo awareness.','Autocompletion inside your usual IDE.','Agent that runs coding tasks in parallel.']},
+ apps:{t:'Build a web app without coding',d:'From idea to a working page or app by describing it.',r:['Generates full apps by chatting, with a database.','Fast for building and publishing prototypes.','Great at polished-looking interfaces.','All-in-one environment that even publishes for you.']},
+ imagen:{t:'Generate images',d:'Illustrations, photos, logos, posters and art.',r:['Best aesthetics for art and illustration.','Edits images by conversation and writes text in them.','Google image generator with strong prompt fidelity.','Excels at readable text: posters and logos.']},
+ diseno:{t:'Graphic design and photo editing',d:'Social media, retouching, background removal and brand assets.',r:['Templates and AI tools to publish fast.','Generative editing inside Adobe workflows, commercial focus.','Edit photos by describing the change.','Very faithful text-based image editing.']},
+ video:{t:'Generate video with AI',d:'Clips from text or an image.',r:['Cinematic quality with audio included.','Creative control and editing tools on the clip.','Great motion and realism, with free credits.','Clips generated inside ChatGPT.']},
+ avatar:{t:'Videos with a virtual presenter',d:'An avatar that speaks: training, sales and explainers.',r:['Realistic avatars and video translation with your voice.','Built for training and enterprise, many languages.','Avatars from a single photo.','Virtual presenters for training and business.']},
+ editarvideo:{t:'Edit video',d:'Cut, caption and polish video or podcast.',r:['Auto captions and ready-made effects for social.','Edit video or audio like a text document.','AI tools to retouch and modify shots.','Improves resolution and quality of old videos.']},
+ voz:{t:'Voice-over and text to speech',d:'Narration, audiobooks and voice cloning.',r:['Very natural voices in many languages.','Generate and fix voice over your own audio.','Turns your documents into a podcast-style audio.','Clear voices for presentations and audiobooks.']},
+ musica:{t:'Create music',d:'Full songs, soundtracks and jingles.',r:['Full songs with vocals from a description.','Music and sound effects from text.','High-quality musical compositions.','Instrumental and cinematic music.']},
+ reuniones:{t:'Transcribe audio and meetings',d:'Minutes, transcripts and call summaries.',r:['Transcribes live and summarizes meetings.','Joins your calls and saves notes and tasks.','Transcribes and edits audio from text.','Ask questions about long transcripts.']},
+ presentaciones:{t:'Make presentations',d:'Slides from a topic or your notes.',r:['Generates a full deck from text.','Polished, easy-to-edit templates.','Structures content and speaker notes.','Drafts content and narrative with good judgment.']},
+ datos:{t:'Analyze data and spreadsheets',d:'Excel, CSV, charts and conclusions from numbers.',r:['Runs analysis and generates charts on your file.','Analyzes spreadsheets and explains results.','Built to ask your data and get charts.','Handy if your data lives in Google Sheets.']},
+ automatizar:{t:'Automate repetitive tasks',d:'Connect apps so the work happens by itself.',r:['Easiest: thousands of apps and AI steps.','Visual flows with more control for less money.','Very flexible and self-hostable.','Agents that use your apps and run multi-step tasks.']},
+ traducir:{t:'Translate',d:'Texts and documents with a natural tone.',r:['Very natural translations, also full documents.','Respects tone and context, explains nuances.','Translates and adapts to the register you ask for.','Translation integrated with Google.']},
+ general:{t:'All-purpose assistant',d:'Mixed questions, ideas, planning and everyday advice.',r:['The most complete and widely known for general use.','Nuanced answers and solid reasoning.','Tightly integrated with Google and Android.','Free and web-connected via Microsoft.']},
+ seo:{t:'SEO and search content',d:'Rank a website and write for Google.',r:['Analyzes keywords and optimizes text to rank.','Generates titles, text and meta descriptions.','Plans a content strategy with editorial judgment.','Researches trends and terms from Google.']},
+ marketing:{t:'Marketing and campaigns',d:'Strategy, ads, emails and creative assets.',r:['Campaigns, copy and content calendars.','Well-reasoned strategy and messaging.','Ready-made copy templates for ads and emails.','Brand copy at scale for teams.']},
+ empleo:{t:'Jobs and interviews',d:'CVs, cover letters, LinkedIn and interview prep.',r:['Tailors your CV and preps interview questions.','Polishes letters and answers with nuance.','Proofreads and improves your CV.','Professional CV and visual templates.']},
+ idiomas:{t:'Learn languages',d:'Practice conversation, grammar, pronunciation and vocabulary.',r:['Practices conversations and explains grammar.','Exercises and contextual translation.','Corrects text and simulates conversations.','Daily routine with adaptive lessons.']},
+ matematicas:{t:'Math and calculus',d:'Equations, calculus, algebra and step-by-step problems.',r:['Solves equations, calculus and conversions.','Explains every operation step by step.','Detailed reasoning and verification.','Solves numeric problems and draws charts.']},
+ legal:{t:'Legal texts and contracts',d:'Drafts and explanations; not a substitute for a lawyer.',r:['Drafts and reviews clauses precisely.','Drafts contracts and policies.','Looks up regulations and examples.','Translates legal documents keeping the tone.']},
+ ux:{t:'UX and interface design',d:'Sketches, prototypes and screens before coding.',r:['Design screens and generate components with AI.','Turns ideas into interactive sites without code.','Turns a sketch into an editable prototype.','Generates polished interfaces.']},
+ audioedit:{t:'Edit and clean audio',d:'Remove noise, fix recordings and polish a podcast.',r:['Cleans audio and edits it like text.','Generates voices and effects to complete your recording.','Records, cleans and publishes podcasts in the browser.','Adds or fixes narration with artificial voices.']},
+ resumirvideo:{t:'Summarize videos and YouTube',d:'Get the key points of a long video without watching it all.',r:['Paste a YouTube link and ask about it.','Summarizes videos and pulls key moments.','Transcribes and summarizes the video audio.','Saves transcripts and summaries of recordings.']},
+ datosviz:{t:'Dashboards and visualization',d:'Dashboards and visual reports with your data.',r:['Interactive dashboards connected to your data.','Free dashboards inside Google.','Advanced visualizations for deep analysis.','Generates charts by asking in plain language.']},
+ notas:{t:'Organize notes and knowledge',d:'Second brain, connected notes and searchable documents.',r:['Notes, databases and AI to summarize.','Turns your notes into a source you can query.','Local, highly connected second brain.','Structures and organizes notes.']},
+ finanzas:{t:'Finance and budgets',d:'Organize spending and simulate scenarios; not financial advice.',r:['Analyzes budgets and projects scenarios.','Explains concepts and builds spreadsheets.','Reviews decisions with nuance.','Works directly with Google Sheets.']},
+ negocio:{t:'Business plan and strategy',d:'Business model, market, competition and pitch.',r:['Business model, pitch and plan structure.','Strategy, segmentation and narrative.','Market data with sources.','Turns the plan into a presentation.']},
+ salud:{t:'Health and wellbeing',d:'General guidance and habits; consult a professional.',r:['Explains concepts and preps questions for your doctor.','General guidance and habit changes.','Information and routine tracking.','Structured guidance on symptoms.']},
+ buscadores:{t:'AI search engines',d:'Find answers fast and compare search engines.',r:['Accurate ad-free paid search.','Search with AI answers and a privacy focus.','Neural search built for research and agents.','Alternative search with sourced answers.']},
+ academicoavanzado:{t:'Literature maps and analysis',d:'See links between papers, citations and authors.',r:['Visual map of related work from one paper.','Discovers papers by following citations and authors.','Checks how a study is cited and in what context.','Finds articles and extracts key concepts.']},
+ correccion:{t:'Proofread and polish',d:'Grammar, clarity, style and rewrites.',r:['Flags long sentences and passive voice for clarity.','Paraphrases and corrects in different modes.','Rewrites sentences keeping the meaning.','Continuous proofreading as you type.']},
+ copywriting:{t:'Copywriting and sales',d:'Headlines, emails and conversion-focused text.',r:['Copy for ads, emails and websites.','Brand copy at scale.','Fast copy in many tones and languages.','Keeps brand tone across all text.']},
+ diapositivas:{t:'Alternative presentations',d:'Other ways to build narrative, visual slides.',r:['Narrative decks generated from text.','Automatic slide design with a polished finish.','Full deck from an outline.','Easy-to-customize templates.']},
+ cuadernos:{t:'Notebooks and collaborative analysis',d:'Work with data and code in shared environments.',r:['Spreadsheets with AI and reusable blocks.','Notebooks and data apps for teams.','Collaborative cloud notebook.','Free Google Python notebooks.']},
+ agentescodigo:{t:'Coding agents',d:'Delegate whole coding tasks, not just autocomplete.',r:['Autonomous agent that plans and executes software tasks.','Open-source agent for complex tasks.','Editor agent that edits files and runs commands.','Flexible editor agent variant.']},
+ devops:{t:'DevOps and deployment',d:'Infrastructure, pipelines, APIs and going live.',r:['Help with AWS, infrastructure and code.','API testing and documentation.','Runs commands and edits config from the editor.','Explains and generates config files.']},
+ apis:{t:'APIs and technical integrations',d:'Design, test and connect endpoints.',r:['Design, test and document APIs.','Generates request examples and schemas.','Reviews API contracts and errors.','Writes and debugs integration code.']},
+ testing:{t:'Testing and QA',d:'Unit and integration tests, plus bug hunting.',r:['Generates tests inside your IDE.','Creates and runs tests on the repo.','Writes tests with project context.','Runs testing tasks in parallel.']},
+ fotografia:{t:'Photography and retouching',d:'Clean photos, remove backgrounds and improve results.',r:['Removes a background in seconds.','Erases unwanted objects from a photo.','Improves portraits and photo quality.','Generative retouching inside Adobe.']},
+ marca:{t:'Brand identity',d:'Logo, palette, typography and consistent visual style.',r:['Generates vector logos and brand assets.','Creates posters and logos with readable text.','Builds the visual system and components.','Applies the identity to templates and socials.']},
+ clipsia:{t:'Viral clips for social',d:'Short videos, reels and shorts with their own style.',r:['Clips with carefully crafted motion and styles.','Generates clips from text or image.','Real-time image and video with creative control.','Short clips with varied effects and styles.']},
+ doblaje:{t:'Dubbing and lip sync',d:'Voices, lip sync and video translation.',r:['Syncs lips to audio or text.','Clones voices and generates narration.','Turns text into natural speech to listen to.','Translates videos with your own voice.']},
+ bandasonoras:{t:'Music for projects',d:'Soundtracks, jingles and effects for videos.',r:['Full songs with vocals.','High-quality musical compositions.','Instrumental and cinematic music.','Creates tracks and publishes from the browser.']},
+ podcast:{t:'Podcast end to end',d:'Record, edit, transcribe and publish episodes.',r:['Records and cleans episodes in the browser.','Edits a podcast like a document.','Generates intro, voices and effects.','Transcribes every episode.']},
+ notasreunion:{t:'Minutes and meeting notes',d:'Summaries, tasks and decisions from every call.',r:['Automatic notes while you talk.','Records, transcribes and summarizes calls.','Minutes and tasks from meetings.','Summaries with highlighted moments.']},
+ integraciones:{t:'Connect apps and services',d:'More ways to automate flows between tools.',r:['Easiest way to connect apps.','Visual flows with more control.','Self-hostable and very flexible.','Integrations for developers.']},
+ gestionproyectos:{t:'Project and task management',d:'Organize teams, boards and work bases.',r:['Tasks, docs and AI in one place.','Project tracking with an AI assistant.','Visual boards and automations.','Databases with views and AI.']},
+ ecommerce:{t:'Online store and sales',d:'Products, text, images and campaigns to sell more.',r:['Product descriptions and sales strategy.','Photos and banners for the catalog.','Builds the store by chatting.','Product copy at scale.']},
+ rrhh:{t:'Human resources',d:'Hiring, contracts, onboarding and internal comms.',r:['Job descriptions and interview scripts.','Policies and internal communications.','Manuals and knowledge bases.','Automates hiring tasks.']},
+ educacion:{t:'Create educational material',d:'Lessons, exercises, assessments and courses.',r:['Designs lessons, exercises and rubrics.','Explains topics in depth with examples.','Turns the syllabus into slides.','Visual resources for the classroom.']},
+ infantil:{t:'Content for kids',d:'Stories, activities and age-appropriate material.',r:['Stories and explanations adapted to each age.','Educational activities with clear language.','Printable sheets and materials.','Original kids songs.']},
+ viajes:{t:'Plan trips',d:'Itineraries, budget, flights and on-the-go plans.',r:['Detailed itineraries and practical tips.','Researches destinations via Google.','Compares prices and sources.','Plans trips by chatting.']},
+ cocina:{t:'Cooking and recipes',d:'Ideas with what you have, menus and techniques.',r:['Recipes with the ingredients you have.','Finds variations and cooking times.','Step-by-step dish ideas.','Weekly menus and explanations.']},
+ deporte:{t:'Training and sports',d:'Routines, progress and healthy habits.',r:['Routines adapted to your level and time.','Explains technique and prevents mistakes.','Researches methods and questions.','Workouts based on your gear and goals.']},
+ bricolaje:{t:'DIY and home',d:'Renovations, furniture, tools and home fixes.',r:['Step-by-step guides and materials list.','Explains technical doubts safely.','Looks up measures, rules and examples.','Compares products and solutions with sources.']},
+ soporte:{t:'Customer support',d:'Answer complaints, tickets and questions with the right tone.',r:['Writes clear, empathetic replies.','Handles delicate escalations with nuance.','Chatbot and automated support.','Connects tickets to your apps.']},
+ sintomas:{t:'Symptom guidance',d:'Prep your doctor visit; not a diagnosis.',r:['Structured guidance on symptoms.','Preps questions for the doctor.','Explains terms and options with caution.','Finds reliable health information.']},
+ local:{t:'Local and private AI',d:'Models that run on your machine, no cloud required.',r:['Open models on your machine with one command.','Interface to use local models comfortably.','Lightweight, free local chat.','Local ChatGPT-like alternative.']},
+ modelos:{t:'Open models and experimentation',d:'Explore, compare and tune open language models.',r:['Explore models, datasets and community demos.','Try open models locally.','Compare models and tune parameters.','European models with open licenses.']},
+ agentbuilder:{t:'Build agents and visual flows',d:'Assemble assistants with nodes, with almost no code.',r:['Build agents by connecting nodes on a canvas.','Visual flows based on LangChain.','Platform for AI apps and agents.','Create conversational bots and publish them.']},
+ avatar2:{t:'More video avatars',d:'Virtual presenters for training, sales and social.',r:['Avatars for courses and corporate training.','Turns articles into videos with a presenter.','Avatars and narration in many languages.','Realistic avatars and video dubbing.']},
+ voicechange:{t:'Change and clone voice',d:'Voice effects, cloning and artificial narrators.',r:['Change your voice live while you speak.','Realistic narration in many languages.','Professional voices for business.','Controlled voice cloning and generation.']},
+ filmora:{t:'Edit video with AI',d:'Assisted editing, enhancements and automatic effects.',r:['Editor with AI tools to cut and improve.','Fast and widely used for social.','Edit video from the transcript.','Generative effects on your shots.']},
+ photoapps:{t:'Photo apps with AI',d:'Improve portraits, erase objects and create images on mobile.',r:['Creative editing and effects on mobile.','Restores and enhances old photos.','Generates images from text.','Very polished portraits and profile photos.']},
+ slidesai:{t:'Slides from text',d:'Generate decks automatically from a script.',r:['Turns text into slides in Google Slides.','Full narrative presentations.','Slides from an outline.','Automatic design with a professional finish.']},
+ chatbots:{t:'Chatbots for your site',d:'Answer questions with a bot trained on your docs.',r:['Train a bot on your site content.','Chatbot over your docs and FAQ.','Assistant for your site in minutes.','Messaging bot for marketing and support.']},
+ soporte2:{t:'Support platforms',d:'Inboxes, live chat and automated replies.',r:['Live chat with AI assistant.','Shared inbox and chatbot.','Support built for online stores.','Chatbot and automated support.']},
+ redes:{t:'Manage social media',d:'Schedule posts and keep the brand tone.',r:['Schedules posts and uses AI for copy.','Manages several networks with an AI assistant.','Automates conversations and DMs.','Visual assets for every network.']},
+ email:{t:'Emails and newsletters',d:'Write, segment and send email campaigns.',r:['Email campaigns with an AI assistant.','Email and CRM with AI features.','Newsletters with growth tools.','Subject lines and copy that lift opens.']}
+};
+
+/* Motivos en inglés para herramientas que no caben en el array principal de cada categoría. */
+const I18N_EXTRA = {
+ 'investigar|4':'Useful to see what is being said right now on X.',
+ 'investigar|5':'Search engine with answers and sources, an alternative to the classics.',
+ 'investigar|6':'Technical search engine very useful for development questions.',
+ 'codigo|4':'Editor with an autonomous agent.',
+ 'codigo|5':'Edits files and makes commits from the terminal.',
+ 'codigo|6':'Searches and understands code in large repositories.',
+ 'codigo|7':'Code assistant integrated into AWS and your IDE.',
+ 'imagen|4':'Photorealistic quality; open versions are available.',
+ 'imagen|5':'Good control and consistent characters.',
+ 'imagen|6':'Open model with great control and a large community.',
+ 'video|4':'Good value for money per use.',
+ 'video|5':'Believable camera movement and physics.',
+ 'video|6':'Short clips with a wide range of styles.',
+ 'voz|4':'Voice-over in many languages from the browser.',
+ 'datos|4':'Integrated into Excel if you use Microsoft 365.',
+ 'general|4':'European alternative with a free plan.',
+ 'general|5':'Powerful reasoning with free usage.',
+ 'marketing|4':'Creatives and visual assets for campaigns.',
+ 'empleo|4':'Preps your LinkedIn profile and searches job offers.',
+ 'buscadores|4':'Conversational search engine with citations.',
+ 'academicoavanzado|4':'Automatic synthesis of scientific evidence.',
+ 'correccion|4':'Brand style and consistency for teams.',
+ 'copywriting|4':'Versatile for variations and A/B tests.',
+ 'cuadernos|4':'Ask questions in natural language about your data.',
+ 'agentescodigo|4':'Code assistant that connects to your editor.',
+ 'agentescodigo|5':'Code completion and chat.',
+ 'agentescodigo|6':'Turns issues into code changes.',
+ 'devops|4':'Reviews pipelines and catches problems.',
+ 'apis|4':'Connect APIs without coding.',
+ 'apis|5':'Technical flows with nodes and webhooks.',
+ 'testing|4':'Completes tests as you write.',
+ 'testing|5':'Code and test autocompletion.',
+ 'fotografia|4':'Quick adjustments and templates.',
+ 'fotografia|5':'Generates variations and backgrounds.',
+ 'marca|4':'Explore visual directions and moodboards.',
+ 'marca|5':'Exports assets ready to publish.',
+ 'clipsia|4':'Edit and add captions to publish fast.',
+ 'doblaje|4':'Realistic voices in many languages.',
+ 'doblaje|5':'Fix voice and audio from the text.',
+ 'bandasonoras|4':'Music editable by duration and mood.',
+ 'bandasonoras|5':'Continuous background music for streams and videos.',
+ 'podcast|4':'Adds voice-over when recording is not possible.',
+ 'podcast|5':'Cover art and promotional assets.',
+ 'notasreunion|4':'Live transcription.',
+ 'notasreunion|5':'Joins the call and saves notes.',
+ 'integraciones|4':'Automation inside Microsoft 365.',
+ 'integraciones|5':'Open-source alternative.',
+ 'gestionproyectos|4':'Documents that work like apps.',
+ 'gestionproyectos|5':'Connected notes and databases.',
+ 'ecommerce|4':'Copy for ads and emails.',
+ 'ecommerce|5':'Sales plan presentation.',
+ 'rrhh|4':'Proofreads HR documents.',
+ 'rrhh|5':'Support for candidates and employees.',
+ 'educacion|4':'Flashcards and automatic quizzes.',
+ 'educacion|5':'Personalized tutoring that follows the curriculum.',
+ 'infantil|4':'Illustrations for stories.',
+ 'infantil|5':'Vocabulary games.',
+ 'viajes|4':'Generates itineraries by destination and days.',
+ 'viajes|5':'Saves and answers questions about your trip plan.',
+ 'cocina|4':'Calculates quantities and nutritional values.',
+ 'deporte|4':'Tracks and analyzes your progress.',
+ 'soporte|4':'Proofread before sending.',
+ 'local|4':'Repository of open models and communities.',
+ 'modelos|4':'European models with an open license.',
+ 'agentbuilder|4':'Agents for research and operations tasks.',
+ 'agentbuilder|5':'Automations with nodes and custom logic.',
+ 'avatar2|4':'Very focused on business and training.',
+ 'voicechange|4':'The most natural option for cloning and narration.',
+ 'filmora|4':'Improves resolution and sharpness.',
+ 'photoapps|4':'Removes backgrounds in one click.',
+ 'chatbots|4':'Visual conversation flows.',
+ 'chatbots|5':'Bots for Messenger and Instagram.',
+ 'soporte2|4':'Connects tickets to your apps.',
+ 'redes|4':'Copy for posts and campaigns.',
+ 'email|4':'Brand copy for complete sequences.'
+};
+
+/* Palabras clave en inglés para que el motor detecte también preguntas en inglés. */
+const EN_KEYWORDS = {
+ investigar:['research','find information','sources','news','compare','what is','current events'],academico:['paper','papers','scientific article','thesis','literature review','evidence'],estudiar:['study','exam','summary','summarize','pdf','notes','learn','homework'],escribir:['write','rewrite','email','article','letter','script','proofread','cv'],codigo:['code','coding','script','bug','debug','python','javascript','api','software','repo'],apps:['build a web','build an app','website','landing page','no code','without coding','mvp','prototype'],imagen:['image','images','illustration','photo','logo','poster','art','draw','avatar'],diseno:['social media','instagram','retouch','edit photo','remove background','banner','flyer','branding'],video:['video','generate video','create video','short video','make a video','clip','animate','text to video','reel','shorts'],avatar:['avatar','presenter','virtual presenter','training video','explainer','dub'],editarvideo:['edit video','subtitles','caption','cut','podcast','youtube','montage'],voz:['voice over','voice','narration','audiobook','text to speech','clone voice','speak'],musica:['music','song','songs','melody','soundtrack','jingle','beat','compose'],reuniones:['transcribe','transcription','meeting','meetings','minutes','call','recording','zoom'],presentaciones:['presentation','presentations','slides','powerpoint','pitch deck','deck'],datos:['excel','spreadsheet','csv','data','analyze data','chart','statistics','formula','kpi'],automatizar:['automate','automation','workflow','repetitive tasks','connect apps','agent','bot'],traducir:['translate','translation','language','english to','french','german','spanish'],general:['help','question','idea','advice','organize','decide','recommend'],seo:['seo','rank','google','keyword','keywords','backlink','meta description','organic traffic'],marketing:['marketing','campaign','ads','advertising','lead','sales','funnel','segmentation'],empleo:['job','employment','cv','resume','interview','offer','linkedin','cover letter'],idiomas:['learn languages','learn english','language','pronunciation','vocabulary','conversation practice'],matematicas:['math','maths','calculus','equation','algebra','probability','statistics','solve'],legal:['legal','lawyer','contract','terms and conditions','privacy policy','clause','gdpr'],ux:['ux','ui','interface','prototype','wireframe','figma','user experience','app design'],audioedit:['edit audio','clean audio','remove noise','background noise','recording','podcast audio'],resumirvideo:['summarize video','video summary','youtube','long video','key moments','transcript youtube'],datosviz:['dashboard','power bi','tableau','looker','visualization','report','kpi'],notas:['notes','organize notes','notion','obsidian','knowledge base','wiki','second brain'],finanzas:['finance','budget','savings','expenses','salary','debt','mortgage','investments'],negocio:['business plan','business','startup','entrepreneur','business model','market','competition','pitch'],salud:['health','wellbeing','nutrition','exercise','sleep','habits','symptoms','doctor'],buscadores:['search engine','search engines','search the internet','kagi','brave','exa'],academicoavanzado:['literature map','related papers','citation map','bibliometrics','references','connected papers'],correccion:['proofread','improve writing','paraphrase','rewrite','clarity','style','grammar'],copywriting:['copywriting','copy','sales text','headline','conversion','sales email','landing copy'],diapositivas:['slides','slidesai','presentation','powerpoint','pitch deck'],cuadernos:['notebook','notebooks','jupyter','colab','collaborative analysis','python for data'],agentescodigo:['coding agent','autonomous agent','devin','openhands','cline','roocode'],devops:['devops','deploy','deployment','docker','kubernetes','pipeline','ci cd','server','aws'],apis:['api','apis','endpoint','rest','graphql','webhook','json','postman'],testing:['testing','test','tests','unit test','playwright','selenium','qa','find bugs'],fotografia:['photography','photo','retouch photo','remove background','transparent background','clean photo'],marca:['brand','branding','visual identity','color palette','typography','logo','brand style'],clipsia:['viral clip','reels','shorts','tiktok','video for social','short clip','higgsfield','vidu'],doblaje:['dubbing','dub video','lip sync','voice for video','translate video','clone voice'],bandasonoras:['music for video','soundtrack','jingle','royalty free music','sound effects','background music'],podcast:['podcast','episode','record podcast','show notes','tech podcast','weekly podcast','listeners','spotify','microphone'],notasreunion:['meeting notes','minutes of meeting','record meeting','call summary','granola','fathom'],integraciones:['connect apps','integrate apps','flow','automation','power automate','pipedream','activepieces'],gestionproyectos:['project management','tasks','team','kanban','clickup','asana','monday','airtable'],ecommerce:['online store','ecommerce','shopify','product','catalog','cart','sell online'],rrhh:['hr','human resources','recruitment','employees','payroll','onboarding','labor contract'],educacion:['educational material','lesson','class','workshop','course','exercises','assessment','teacher'],infantil:['kids','children','story for kids','school','educate kids','kids activities'],viajes:['trip','travel','itinerary','flights','hotel','route','tourism','destination','vacation','on a budget','plan a trip'],cocina:['recipe','cook','cooking','ingredients','dish','menu','food','fridge'],deporte:['training','gym','sport','running','routine','fitness','workout'],bricolaje:['diy','home','renovation','furniture','paint','fix','tool','install'],soporte:['customer support','support','ticket','complaint','customer','reply to customer','chatbot'],sintomas:['symptoms','checker of symptoms','medical guidance','doctor consultation'],local:['local ai','local model','offline','no cloud','privacy','self host','ollama','lm studio'],modelos:['open model','open source','hugging face','fine tuning','weights','llm'],agentbuilder:['build agent','agent builder','visual flow','flowise','langflow','dify','coze'],avatar2:['video avatar','presenter virtual','avatar for courses','colossyan','elai','synthesys'],voicechange:['change voice','clone voice','voice artificial','narrator','wellsaid','lovo'],filmora:['filmora','edit video with ai','improve video','video editor'],photoapps:['photo app','app for photos','photoleap','pixelup','dreamina','improve photos'],slidesai:['slides ai','generate slides','automatic presentation','slidesai'],chatbots:['chatbot','bot for website','assistant for my site','answer questions','manychat','landbot'],soporte2:['support chat','tidio','crisp','gorgias','support inbox'],redes:['social media','manage social media','community manager','buffer','hootsuite','schedule posts'],email:['email marketing','newsletter','send newsletter','mailchimp','brevo','beehiiv']
+};
+
+const EXAMPLES = [
+ {es:'Quiero hacer un vídeo corto para Instagram con voz en off',en:'I want to make a short Instagram video with a voice-over'},
+ {es:'Necesito resumir un PDF de 200 páginas para un examen',en:'I need to summarize a 200-page PDF for an exam'},
+ {es:'Quiero crear una web para mi negocio sin saber programar',en:'I want to create a website for my business without coding'},
+ {es:'Tengo un error en mi código Python que no entiendo',en:'I have an error in my Python code I do not understand'},
+ {es:'Quiero posicionar mi web en Google y necesito palabras clave',en:'I want to rank my website on Google and need keywords'},
+ {es:'Dame ideas para un podcast semanal de tecnología',en:'Give me ideas for a weekly tech podcast'},
+ {es:'Planea un viaje de 5 días a Japón con presupuesto',en:'Plan a 5-day trip to Japan on a budget'}
+];
+
+/* ---------- MOTOR ---------- */
+function norm(s){return ' '+s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ')+' ';}
+
+function catKeys(c){ return c.k.concat(EN_KEYWORDS[c.id] || []); }
+
+function recommend(text, onlyFree){
+  const q = norm(text);
+  const scored = CATS.map(c=>{
+    let s = 0;
+    for (const k of catKeys(c)){
+      const key = ' ' + k.trim().toLowerCase() + ' ';
+      if (q.includes(key)) s += k.includes(' ') ? 2 : 1;
+    }
+    return {c, s};
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s);
+
+  let picked = scored.slice(0,3);
+  if (picked.length > 1) { const top = picked[0].s; picked = picked.filter(x=>x.s >= Math.max(1, top*0.5)); }
+  const cats = picked.map(x=>{
+    let list = x.c.p.map(([id,why],i)=>({id, why, whyIndex:i, ...TOOLS[id]}));
+    if (onlyFree) list = list.filter(t=>t.f);
+    return {id:x.c.id, t:x.c.t, d:x.c.d, tools:list.slice(0,4)};
+  }).filter(c=>c.tools.length);
+  return cats;
+}
+/* FIN-MOTOR */
+
+/* ---------- INTERFAZ ---------- */
+const $ = id => document.getElementById(id);
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+let currentLang = 'es';
+const t = () => UI[currentLang];
+function catText(c){ return currentLang === 'en' ? (I18N_CATS[c.id] || c) : c; }
+function reasonText(c, why, i){ if (currentLang !== 'en') return why; return I18N_EXTRA[c.id + '|' + i] || ((I18N_CATS[c.id] || {}).r || [])[i] || why; }
+function setText(id, value){ const el = $(id); if (el) el.textContent = value; }
+function updateSuggestBtn(){ $('suggestBtn').textContent = $('suggestBox').hidden ? t().suggest : t().close; }
+
+function renderExamples(){
+  const ex = $('examples');
+  ex.querySelectorAll('button').forEach(b=>b.remove());
+  EXAMPLES.forEach(e=>{
+    const b = document.createElement('button');
+    b.type='button'; b.className='ex'; b.textContent=e[currentLang];
+    b.addEventListener('click',()=>{ $('problema').value=e[currentLang]; render(); });
+    ex.appendChild(b);
+  });
+}
+
+function applyLang(lang){
+  const before = $('problema').value.trim();
+  const oldLang = currentLang;
+  currentLang = lang === 'en' ? 'en' : 'es';
+  const s = t();
+
+  document.documentElement.lang = currentLang;
+  document.title = s.title;
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.content = currentLang === 'en'
+    ? 'Describe your problem and TheBestIA tells you which AI tools to use: text, code, images, video, voice, data and much more.'
+    : 'Cuéntame tu problema y TheBestIA te dice qué herramientas usar: texto, código, imagen, vídeo, voz, datos y mucho más.';
+  const og = document.querySelector('meta[property="og:title"]');
+  if (og) og.content = s.title;
+
+  const idx = EXAMPLES.findIndex(e=>e[oldLang] === before);
+  if (idx >= 0) $('problema').value = EXAMPLES[idx][currentLang];
+
+  setText('lead', s.lead);
+  setText('labelProblema', s.label);
+  setText('labelGratis', s.free);
+  setText('goBtn', s.go);
+  setText('examplesLabel', s.try);
+  setText('sugLabel', s.sugLabel);
+  setText('sugMail', s.sugMail);
+  setText('sugCopy', s.sugCopy);
+  setText('footer', s.footer);
+  $('problema').placeholder = s.placeholder;
+  $('sugText').placeholder = s.sugPlaceholder;
+  $('sugStatus').textContent = s.sugNote;
+  $('sugStatus').className = 'note';
+  document.querySelectorAll('.lang').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.lang === currentLang)));
+  updateSuggestBtn();
+  renderExamples();
+  render();
+}
+
+function render(){
+  const s = t();
+  const text = $('problema').value.trim();
+  const out = $('out');
+  if (!text){ out.innerHTML = '<div class="empty">'+esc(s.empty)+'</div>'; return; }
+  const cats = recommend(text, $('gratis').checked);
+  if (!cats.length){
+    const gen = CATS.find(c=>c.id==='general');
+    const tools = gen.p.slice(0,3).map(([id])=>TOOLS[id].n).join(', ');
+    out.innerHTML = '<div class="empty"><strong>'+esc(s.noTitle)+'</strong><p class="note">'+esc(s.noBody)+' '+esc(tools)+'.</p></div>';
+    return;
+  }
+  const chips = cats.map(c=>'<span class="chip">'+esc(catText(c).t)+'</span>').join('');
+  let html = '<div class="results"><div class="detected"><strong>'+esc(s.detected)+'</strong>'+chips+'</div>';
+  if (cats.length>1) html += '<p class="note">'+esc(s.multi)+'</p>';
+  for (const c of cats){
+    const tr = catText(c);
+    html += '<article class="cat"><header><h2>'+esc(tr.t)+'</h2><p>'+esc(tr.d)+'</p></header>';
+    c.tools.forEach((tool,i)=>{
+      html += '<div class="tool'+(i===0?' first':'')+'"><div class="rank">'+(i+1)+'</div><div>'
+        +'<div class="tname"><a href="'+tool.u+'" target="_blank" rel="noopener">'+esc(tool.n)+'</a>'
+        +(i===0?'<span class="badge b-best">'+esc(s.best)+'</span>':'')
+        +'<span class="badge '+(tool.f?'b-free':'b-paid')+'">'+(tool.f?esc(s.freeBadge):esc(s.paid))+'</span></div>'
+        +'<p>'+esc(reasonText(c, tool.why, tool.whyIndex))+'</p></div></div>';
+    });
+    html += '</article>';
+  }
+  out.innerHTML = html + '</div>';
+}
+
+$('form').addEventListener('submit',e=>{e.preventDefault();render();});
+$('gratis').addEventListener('change',render);
+document.querySelectorAll('.lang').forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
+
+/* ---------- PROPUESTAS ---------- */
+const sugBtn = $('suggestBtn'), sugBox = $('suggestBox'), sugText = $('sugText'), sugStatus = $('sugStatus');
+function getProposal(){ return sugText.value.trim(); }
+function setSug(msg, ok){ sugStatus.textContent = msg; sugStatus.className = ok ? 'note ok' : 'note'; }
+sugBtn.addEventListener('click',()=>{
+  sugBox.hidden = !sugBox.hidden;
+  updateSuggestBtn();
+  if (!sugBox.hidden) sugText.focus();
+});
+$('sugMail').addEventListener('click',()=>{
+  const s = t();
+  const p = getProposal();
+  if (!p){ setSug(s.sugEmpty, false); return; }
+  const body = s.bodyStart + p + s.bodyEnd;
+  window.location.href = 'mailto:blaibgf11@gmail.com?subject=' + encodeURIComponent(s.subject) + '&body=' + encodeURIComponent(body);
+  setSug(s.sugMailOk, true);
+});
+$('sugCopy').addEventListener('click',async()=>{
+  const s = t();
+  const p = getProposal();
+  if (!p){ setSug(s.sugEmpty, false); return; }
+  try{
+    await navigator.clipboard.writeText(p);
+    setSug(s.sugCopyOk, true);
+  }catch(e){
+    const aux = document.createElement('textarea');
+    aux.value = p; aux.style.position = 'fixed'; aux.style.opacity = '0';
+    document.body.appendChild(aux); aux.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(aux);
+    setSug(ok ? s.sugCopyOk : s.sugCopyFail, ok);
+  }
+});
+
+$('problema').value = EXAMPLES[0].es;
+applyLang('es');
+</script>
+</body>
+</html>
